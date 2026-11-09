@@ -113,15 +113,17 @@ GA4 기본(향상된 측정)으로 페이지뷰, 스크롤 90%, 외부 링크 �
 | `code_copy` | 코드 블록 복사 버튼 클릭 | `post_slug`, `post_category`, `post_tags`, `code_language` |
 | `read_complete` | 본문 끝 도달 | `post_slug`, `post_category`, `post_tags`, `seconds_to_complete` |
 
-### GTM 사용 시 설정 (1회)
+### GTM 설정 (1회)
 
-1. GTM 태그: **Google 태그** (GA4 측정 ID `G-...`) — 트리거: All Pages
-2. GTM 변수: 데이터 영역 변수 `post_slug`, `post_category`, `post_tags`, `code_language`, `seconds_to_complete` 생성
-3. GTM 트리거: 맞춤 이벤트 `code_copy`, `read_complete`
-4. GTM 태그: **GA4 이벤트** — 이벤트 이름 `{{Event}}`, 위 파라미터 매핑, 트리거는 3번
-5. GA4 관리 → 맞춤 정의에서 `post_slug`, `post_category`, `post_tags`, `code_language`를 이벤트 범위 맞춤 측정기준으로 등록
+사이트는 GTM 컨테이너(`PUBLIC_GTM_ID`)만 로드하고, 커스텀 이벤트는 `gtag('event', ...)`로 보냅니다.
+GTM 안에 **Google 태그(GA4)** 하나만 있으면 페이지뷰·향상된 측정·커스텀 이벤트가 모두 GA4로 들어갑니다.
 
-`PUBLIC_GA_ID`(gtag 직접 모드)를 쓰면 1~4 없이 이벤트가 바로 GA4로 전송됩니다. 5번은 동일하게 필요합니다.
+1. GTM → 태그 → 새로 만들기 → **Google 태그**, 태그 ID `G-YQJFYJYNDT`
+2. 트리거: **Initialization - All Pages**
+3. 제출 → 게시
+4. GA4 관리 → 맞춤 정의 → 이벤트 범위 맞춤 측정기준으로 `post_slug`, `post_category`, `post_tags`, `code_language` 등록
+
+`PUBLIC_GA_ID`(gtag 직접 모드)를 쓰면 GTM 없이 같은 방식으로 동작합니다.
 
 ## 검색 등록
 
