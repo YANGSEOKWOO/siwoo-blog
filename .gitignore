@@ -27,3 +27,6 @@ pnpm-debug.log*
 .omc/
 .claude/settings.local.json
 .vercel
+
+.vercel
+.env*
