@@ -1,0 +1,79 @@
+---
+// 모든 페이지 <head>에 들어가는 공통 메타데이터 + 분석/광고 스크립트
+import '../styles/global.css';
+import type { ImageMetadata } from 'astro';
+import FallbackImage from '../assets/blog-placeholder-1.jpg';
+import { SITE_TITLE } from '../consts';
+import Analytics from './Analytics.astro';
+
+interface Props {
+	title: string;
+	description: string;
+	image?: ImageMetadata;
+	type?: 'website' | 'article';
+	/** 구조화 데이터(JSON-LD). 글 페이지에서 BlogPosting을 넘깁니다. */
+	jsonLd?: Record<string, unknown>;
+}
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const { title, description, image = FallbackImage, type = 'website', jsonLd } = Astro.props;
+const pageTitle = title === SITE_TITLE ? title : `${title} | ${SITE_TITLE}`;
+
+const isProd = import.meta.env.PROD;
+const adsenseClient = import.meta.env.PUBLIC_ADSENSE_CLIENT;
+const googleVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
+const naverVerification = import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" href="/favicon.ico" />
+<link rel="sitemap" href="/sitemap-index.xml" />
+<link rel="alternate" type="application/rss+xml" title={SITE_TITLE} href={new URL('rss.xml', Astro.site)} />
+<meta name="generator" content={Astro.generator} />
+
+<!-- 테마: 저장된 선택 → 시스템 설정 순. 깜빡임 방지를 위해 렌더링 전에 실행 -->
+<script is:inline>
+	(function () {
+		var t;
+		try { t = localStorage.getItem('theme'); } catch (e) {}
+		if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		document.documentElement.dataset.theme = t;
+	})();
+</script>
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#14161b" media="(prefers-color-scheme: dark)" />
+
+<link rel="canonical" href={canonicalURL} />
+<title>{pageTitle}</title>
+<meta name="description" content={description} />
+
+<!-- Open Graph -->
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={SITE_TITLE} />
+<meta property="og:locale" content="ko_KR" />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={new URL(image.src, Astro.site)} />
+<meta name="twitter:card" content="summary_large_image" />
+
+<!-- 사이트 소유권 확인 (Search Console / 네이버 서치어드바이저) -->
+{googleVerification && <meta name="google-site-verification" content={googleVerification} />}
+{naverVerification && <meta name="naver-site-verification" content={naverVerification} />}
+
+{jsonLd && <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />}
+
+<Analytics />
+
+{
+	isProd && adsenseClient && (
+		<script
+			is:inline
+			async
+			src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+			crossorigin="anonymous"
+		/>
+	)
+}

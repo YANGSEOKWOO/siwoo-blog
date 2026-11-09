@@ -1,0 +1,36 @@
+---
+/**
+ * GA4 / GTM 로더 + 전역 track() 헬퍼.
+ * - PUBLIC_GTM_ID가 있으면 GTM을 로드 (권장: 이벤트/태그를 코드 배포 없이 관리)
+ * - 없고 PUBLIC_GA_ID가 있으면 gtag.js로 GA4를 직접 로드
+ * - 개발 서버(npm run dev)에서는 아무것도 로드하지 않고, 이벤트를 콘솔에만 출력
+ */
+const isProd = import.meta.env.PROD;
+const gtmId = import.meta.env.PUBLIC_GTM_ID;
+const gaId = import.meta.env.PUBLIC_GA_ID;
+const mode = !isProd ? 'dev' : gtmId ? 'gtm' : gaId ? 'gtag' : 'off';
+
+const trackHelper = `
+window.dataLayer = window.dataLayer || [];
+window.track = function (name, params) {
+  params = params || {};
+  if (${JSON.stringify(mode)} === 'dev') { console.debug('[track]', name, params); return; }
+  if (typeof window.gtag === 'function') { window.gtag('event', name, params); }
+  else { window.dataLayer.push(Object.assign({ event: name }, params)); }
+};`;
+
+const gtmSnippet = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer',${JSON.stringify(gtmId)});`;
+
+const gtagSnippet = `function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config',${JSON.stringify(gaId)});`;
+---
+
+<script is:inline set:html={trackHelper} />
+{mode === 'gtm' && <script is:inline set:html={gtmSnippet} />}
+{
+	mode === 'gtag' && (
+		<>
+			<script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+			<script is:inline set:html={gtagSnippet} />
+		</>
+	)
+}

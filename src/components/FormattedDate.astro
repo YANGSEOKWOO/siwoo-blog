@@ -1,0 +1,13 @@
+---
+interface Props {
+	date: Date;
+	class?: string;
+}
+
+const { date, class: className } = Astro.props;
+const y = date.getFullYear();
+const m = String(date.getMonth() + 1).padStart(2, '0');
+const d = String(date.getDate()).padStart(2, '0');
+---
+
+<time datetime={date.toISOString()} class={className}>{`${y}.${m}.${d}`}</time>

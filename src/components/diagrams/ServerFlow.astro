@@ -1,0 +1,285 @@
+---
+/**
+ * 서버 간 통신을 "패킷이 움직이는" SVG 애니메이션으로 그리는 컴포넌트.
+ * JS 없이 SVG <animateMotion>만 사용하므로 가볍고(번들 0KB), MDX에서 바로 쓸 수 있습니다.
+ *
+ * 사용 예 (.mdx):
+ *   <ServerFlow
+ *     nodes={[{ id: 'client', label: 'Client', x: 0, y: 1 }, { id: 'api', label: 'API', x: 1, y: 1 }]}
+ *     edges={[{ from: 'client', to: 'api', label: 'HTTP', response: true }]}
+ *   />
+ *
+ * 좌표(x, y)는 격자 칸 단위입니다. 화면 크기는 노드 범위에 맞춰 자동 계산됩니다.
+ */
+
+type Kind = 'client' | 'server' | 'db' | 'cache' | 'queue' | 'external';
+
+interface FlowNode {
+	id: string;
+	label: string;
+	x: number;
+	y: number;
+	kind?: Kind;
+}
+
+interface FlowEdge {
+	from: string;
+	to: string;
+	label?: string;
+	/** true면 응답 패킷이 반대 방향으로 돌아옵니다 (요청-응답 모델). */
+	response?: boolean;
+	/** 한 번 이동하는 데 걸리는 초 (작을수록 빠름). 기본 2 */
+	duration?: number;
+	/** 패킷 색. 기본은 accent 색 */
+	color?: string;
+	/** 동시에 흐르는 패킷 개수 (트래픽 양 표현). 기본 1 */
+	packets?: number;
+	/** 점선으로 표시 (비동기/이벤트 전송 등) */
+	dashed?: boolean;
+	/** 패킷을 빨간색으로 표시하고 도착 직전에 사라지게 함 (실패/타임아웃 표현) */
+	fail?: boolean;
+}
+
+interface Props {
+	nodes: FlowNode[];
+	edges: FlowEdge[];
+	caption?: string;
+}
+
+const { nodes, edges, caption } = Astro.props;
+
+const CELL_W = 200;
+const CELL_H = 130;
+const NODE_W = 120;
+const NODE_H = 52;
+const PAD = 24;
+
+const xs = nodes.map((n) => n.x);
+const ys = nodes.map((n) => n.y);
+const minX = Math.min(...xs);
+const minY = Math.min(...ys);
+const width = (Math.max(...xs) - minX) * CELL_W + NODE_W + PAD * 2;
+const height = (Math.max(...ys) - minY) * CELL_H + NODE_H + PAD * 2;
+
+const center = (n: FlowNode) => ({
+	cx: (n.x - minX) * CELL_W + PAD + NODE_W / 2,
+	cy: (n.y - minY) * CELL_H + PAD + NODE_H / 2,
+});
+
+const byId = new Map(nodes.map((n) => [n.id, n]));
+
+/** 노드 사각형 테두리에서 선이 시작/끝나도록 중심점을 잘라냅니다. */
+function clipToBox(fromX: number, fromY: number, toX: number, toY: number) {
+	const dx = toX - fromX;
+	const dy = toY - fromY;
+	const sx = dx === 0 ? Infinity : NODE_W / 2 / Math.abs(dx);
+	const sy = dy === 0 ? Infinity : NODE_H / 2 / Math.abs(dy);
+	const t = Math.min(sx, sy) + 0.04;
+	return { x: fromX + dx * t, y: fromY + dy * t };
+}
+
+// 같은 두 노드 사이에 요청/응답 경로가 겹치지 않도록 수직 방향으로 살짝 벌립니다.
+const OFFSET = 7;
+
+const uid = `sf-${Math.random().toString(36).slice(2, 8)}`;
+
+const renderedEdges = edges.map((e, i) => {
+	const a = byId.get(e.from);
+	const b = byId.get(e.to);
+	if (!a || !b) throw new Error(`ServerFlow: 알 수 없는 노드 id (${e.from} → ${e.to})`);
+	const ca = center(a);
+	const cb = center(b);
+	const len = Math.hypot(cb.cx - ca.cx, cb.cy - ca.cy) || 1;
+	const nx = (-(cb.cy - ca.cy) / len) * (e.response ? OFFSET : 0);
+	const ny = ((cb.cx - ca.cx) / len) * (e.response ? OFFSET : 0);
+
+	const start = clipToBox(ca.cx, ca.cy, cb.cx, cb.cy);
+	const end = clipToBox(cb.cx, cb.cy, ca.cx, ca.cy);
+
+	const req = `M ${start.x + nx} ${start.y + ny} L ${end.x + nx} ${end.y + ny}`;
+	const res = `M ${end.x - nx} ${end.y - ny} L ${start.x - nx} ${start.y - ny}`;
+	const duration = e.duration ?? 2;
+	const count = Math.max(1, e.packets ?? 1);
+	return {
+		...e,
+		id: `${uid}-e${i}`,
+		req,
+		res,
+		duration,
+		count,
+		mid: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
+		color: e.fail ? 'var(--sf-fail)' : (e.color ?? 'var(--sf-packet)'),
+		// 응답은 요청이 도착한 뒤 출발하도록, 전체 주기를 2배로 잡고 절반만큼 늦춥니다.
+		cycle: e.response ? duration * 2 : duration,
+	};
+});
+
+const icon: Record<Kind, string> = {
+	client: '💻',
+	server: '🖥️',
+	db: '🗄️',
+	cache: '⚡',
+	queue: '📬',
+	external: '🌐',
+};
+---
+
+<figure class="server-flow">
+	<svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={caption ?? '서버 통신 다이어그램'}>
+		<defs>
+			<marker id={`${uid}-arrow`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+				<path d="M 0 0 L 10 5 L 0 10 z" fill="var(--sf-line)"></path>
+			</marker>
+		</defs>
+
+		{
+			renderedEdges.map((e) => (
+				<g>
+					<path d={e.req} class:list={['sf-line', { dashed: e.dashed }]} marker-end={`url(#${uid}-arrow)`} />
+					{e.response && <path d={e.res} class="sf-line dashed" marker-end={`url(#${uid}-arrow)`} />}
+					{e.label && (
+						<text x={e.mid.x} y={e.mid.y - 12} class="sf-edge-label">
+							{e.label}
+						</text>
+					)}
+
+					{Array.from({ length: e.count }, (_, k) => {
+						const begin = `${((e.cycle / e.count) * k).toFixed(2)}s`;
+						const reqKeyPoints = e.response ? '0;1;1' : '0;1';
+						const reqKeyTimes = e.response ? '0;0.5;1' : '0;1';
+						return (
+							<g class="sf-packet-group">
+								<circle r="5.5" fill={e.color} class="sf-packet">
+									<animateMotion
+										dur={`${e.cycle}s`}
+										begin={begin}
+										repeatCount="indefinite"
+										path={e.req}
+										keyPoints={e.fail ? '0;0.75;0.75' : reqKeyPoints}
+										keyTimes={e.fail ? '0;0.5;1' : reqKeyTimes}
+										calcMode="linear"
+									/>
+									<animate
+										attributeName="opacity"
+										dur={`${e.cycle}s`}
+										begin={begin}
+										repeatCount="indefinite"
+										values={e.fail ? '1;1;0;0' : e.response ? '1;1;0;0' : '1;1'}
+										keyTimes={e.fail || e.response ? '0;0.5;0.501;1' : '0;1'}
+									/>
+								</circle>
+								{e.response && !e.fail && (
+									<circle r="5" fill="var(--sf-response)" class="sf-packet">
+										<animateMotion
+											dur={`${e.cycle}s`}
+											begin={begin}
+											repeatCount="indefinite"
+											path={e.res}
+											keyPoints="0;0;1"
+											keyTimes="0;0.5;1"
+											calcMode="linear"
+										/>
+										<animate
+											attributeName="opacity"
+											dur={`${e.cycle}s`}
+											begin={begin}
+											repeatCount="indefinite"
+											values="0;0;1;1"
+											keyTimes="0;0.5;0.501;1"
+										/>
+									</circle>
+								)}
+							</g>
+						);
+					})}
+				</g>
+			))
+		}
+
+		{
+			nodes.map((n) => {
+				const { cx, cy } = center(n);
+				return (
+					<g class={`sf-node kind-${n.kind ?? 'server'}`}>
+						<rect x={cx - NODE_W / 2} y={cy - NODE_H / 2} width={NODE_W} height={NODE_H} rx="10" />
+						<text x={cx} y={cy + 5} class="sf-node-label">
+							{icon[n.kind ?? 'server']} {n.label}
+						</text>
+					</g>
+				);
+			})
+		}
+	</svg>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.server-flow {
+		--sf-line: var(--muted);
+		--sf-packet: var(--accent);
+		--sf-response: var(--ok);
+		--sf-fail: var(--fail);
+		margin: 2em 0;
+		text-align: center;
+	}
+	svg {
+		width: 100%;
+		height: auto;
+		max-height: 520px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+	}
+	.sf-line {
+		stroke: var(--sf-line);
+		stroke-width: 1.5;
+		fill: none;
+		opacity: 0.6;
+	}
+	.sf-line.dashed {
+		stroke-dasharray: 5 5;
+	}
+	.sf-edge-label {
+		font-size: 12px;
+		fill: var(--muted);
+		text-anchor: middle;
+		paint-order: stroke;
+		stroke: var(--surface);
+		stroke-width: 4px;
+	}
+	.sf-node rect {
+		fill: var(--surface);
+		stroke: var(--ink);
+		stroke-width: 1.5;
+	}
+	.sf-node.kind-db rect {
+		stroke: #7c3aed;
+	}
+	.sf-node.kind-cache rect {
+		stroke: #ea580c;
+	}
+	.sf-node.kind-queue rect {
+		stroke: #0891b2;
+	}
+	.sf-node.kind-client rect,
+	.sf-node.kind-external rect {
+		stroke-dasharray: 4 3;
+	}
+	.sf-node-label {
+		font-size: 14px;
+		font-weight: 650;
+		fill: var(--ink);
+		text-anchor: middle;
+	}
+	figcaption {
+		margin-top: 0.5em;
+		font-size: 0.85em;
+		color: var(--muted);
+	}
+	/* 움직임 줄이기 설정을 켠 사용자에게는 패킷 애니메이션을 숨깁니다 (접근성). */
+	@media (prefers-reduced-motion: reduce) {
+		.sf-packet-group {
+			display: none;
+		}
+	}
+</style>

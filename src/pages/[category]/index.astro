@@ -1,0 +1,55 @@
+---
+// /tech/, /book/ — 카테고리별 글 목록
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import PostList from '../../components/PostList.astro';
+import { CATEGORIES, CATEGORY_KEYS, type Category } from '../../consts';
+import { getPublishedPosts } from '../../lib/posts';
+
+export function getStaticPaths() {
+	return CATEGORY_KEYS.map((category) => ({ params: { category } }));
+}
+
+const category = Astro.params.category as Category;
+const { label, description } = CATEGORIES[category];
+const posts = await getPublishedPosts(category);
+---
+
+<!doctype html>
+<html lang="ko">
+	<head>
+		<BaseHead title={label} description={description} />
+	</head>
+	<body>
+		<Header />
+		<main class="container narrow">
+			<header class="page-head">
+				<h1>{label}</h1>
+				<p>{description}</p>
+				<p class="count">{posts.length}개의 글</p>
+			</header>
+			<PostList posts={posts} showCategory={false} />
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	.page-head {
+		padding: 3.5rem 0 2.5rem;
+	}
+	h1 {
+		font-size: 2rem;
+		font-weight: 800;
+		letter-spacing: -0.03em;
+	}
+	.page-head p {
+		margin: 0.4rem 0 0;
+		color: var(--muted);
+	}
+	.page-head .count {
+		margin-top: 0.2rem;
+		font-size: 0.88rem;
+	}
+</style>

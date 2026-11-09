@@ -1,0 +1,38 @@
+---
+// 소개, 개인정보처리방침, 연락처 같은 일반 페이지용 레이아웃
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+
+interface Props {
+	title: string;
+	description: string;
+}
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+	<head>
+		<BaseHead title={title} description={description} />
+	</head>
+	<body>
+		<Header />
+		<main class="container narrow">
+			<h1>{title}</h1>
+			<div class="prose">
+				<slot />
+			</div>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	h1 {
+		padding: 3.5rem 0 1.5rem;
+		font-size: 2rem;
+		font-weight: 800;
+		letter-spacing: -0.03em;
+	}
+</style>

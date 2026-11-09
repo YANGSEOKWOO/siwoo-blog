@@ -1,0 +1,14 @@
+---
+import Page from '../layouts/Page.astro';
+import { AUTHOR_NAME, CONTACT_EMAIL, GITHUB_URL } from '../consts';
+---
+
+<Page title="소개" description={`${AUTHOR_NAME} 소개`}>
+	<p>안녕하세요, {AUTHOR_NAME}입니다.</p>
+	<!-- TODO(배포 전): 본인 소개로 바꾸세요. 애드센스 심사에서 "누가 운영하는 사이트인지"가 드러나는 것이 좋습니다. -->
+	<p>이 블로그에는 개발하면서 배운 것과 직접 해본 실험(기술), 읽은 책에서 얻은 생각(책)을 기록합니다.</p>
+	<ul>
+		<li>GitHub: <a href={GITHUB_URL}>{GITHUB_URL}</a></li>
+		<li>Email: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></li>
+	</ul>
+</Page>

@@ -1,0 +1,214 @@
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* ───────── Tokens ───────── */
+:root,
+:root[data-theme='light'] {
+	--bg: #f6f7f9;
+	--surface: #ffffff;
+	--ink: #161a22;
+	--ink-soft: #3c4350;
+	--muted: #6b7381;
+	--line: #e2e5ea;
+	--accent: #2b4bd8; /* cobalt: 링크, 패킷 */
+	--accent-soft: #e7ebfc;
+	--ok: #148a55; /* 응답 패킷 */
+	--fail: #d0352b; /* 실패 패킷 */
+	--code-inline-bg: #eceef2;
+	color-scheme: light;
+}
+:root[data-theme='dark'] {
+	--bg: #14161b;
+	--surface: #1b1e25;
+	--ink: #e9ebef;
+	--ink-soft: #c3c8d1;
+	--muted: #8b93a1;
+	--line: #2c313b;
+	--accent: #8aa2ff;
+	--accent-soft: #232a45;
+	--ok: #4cc28a;
+	--fail: #ff7a6e;
+	--code-inline-bg: #262a33;
+	color-scheme: dark;
+}
+
+/* ───────── Base ───────── */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html {
+	-webkit-text-size-adjust: 100%;
+}
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink-soft);
+	font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+	font-size: 17px;
+	line-height: 1.8;
+	letter-spacing: -0.005em;
+	word-break: keep-all;
+	overflow-wrap: break-word;
+	-webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3,
+h4 {
+	color: var(--ink);
+	line-height: 1.35;
+	letter-spacing: -0.02em;
+	margin: 0;
+}
+a {
+	color: var(--accent);
+	text-underline-offset: 3px;
+	text-decoration-thickness: 1px;
+}
+a:hover {
+	text-decoration-thickness: 2px;
+}
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+	border-radius: 4px;
+}
+img {
+	max-width: 100%;
+	height: auto;
+}
+hr {
+	border: 0;
+	border-top: 1px solid var(--line);
+	margin: 3em 0;
+}
+
+.container {
+	width: 100%;
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 0 24px;
+}
+.narrow {
+	max-width: 720px;
+}
+
+/* ───────── Article prose ───────── */
+.prose {
+	font-size: 1.04rem;
+}
+.prose > * + * {
+	margin-top: 1.25em;
+}
+.prose p,
+.prose ul,
+.prose ol {
+	margin-bottom: 0;
+}
+.prose h2 {
+	font-size: 1.55rem;
+	margin-top: 2.6em;
+	padding-top: 0.2em;
+}
+.prose h3 {
+	font-size: 1.22rem;
+	margin-top: 2em;
+}
+.prose h2 + *,
+.prose h3 + * {
+	margin-top: 0.8em;
+}
+.prose :is(h2, h3) {
+	scroll-margin-top: 88px;
+}
+.prose strong {
+	color: var(--ink);
+	font-weight: 650;
+}
+.prose li + li {
+	margin-top: 0.35em;
+}
+.prose ul,
+.prose ol {
+	padding-left: 1.3em;
+}
+.prose li::marker {
+	color: var(--muted);
+}
+.prose :not(pre) > code {
+	font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+	font-size: 0.84em;
+	background: var(--code-inline-bg);
+	color: var(--ink);
+	padding: 0.15em 0.4em;
+	border-radius: 5px;
+}
+.prose blockquote {
+	margin-left: 0;
+	margin-right: 0;
+	padding: 0.2em 0 0.2em 1.1em;
+	border-left: 3px solid var(--accent);
+	color: var(--muted);
+}
+.prose table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.92em;
+	display: block;
+	overflow-x: auto;
+}
+.prose th {
+	text-align: left;
+	color: var(--ink);
+	font-weight: 650;
+	border-bottom: 1.5px solid var(--ink);
+}
+.prose th,
+.prose td {
+	padding: 0.55em 1em 0.55em 0;
+	border-bottom: 1px solid var(--line);
+}
+.prose img {
+	border-radius: 10px;
+}
+.prose .katex-display {
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 0.4em 0;
+}
+.prose pre.mermaid {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 1.5em 1em;
+	text-align: center;
+	overflow-x: auto;
+	/* mermaid가 그리기 전 원문 텍스트가 보이는 것을 숨김 */
+	color: transparent;
+}
+.prose pre.mermaid[data-processed] {
+	color: inherit;
+}
+
+.sr-only {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+	body {
+		font-size: 16px;
+	}
+	.container {
+		padding: 0 18px;
+	}
+	.prose h2 {
+		font-size: 1.35rem;
+	}
+}
