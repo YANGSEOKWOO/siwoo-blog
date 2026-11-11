@@ -1,0 +1,104 @@
+---
+/** 연재 글 상단의 시리즈 목차. frontmatter에 series가 있는 글에서 BlogPost 레이아웃이 보여 줍니다. */
+import { SERIES, type SeriesId } from '../consts';
+import { getPublishedPosts } from '../lib/posts';
+
+interface Props {
+	id: SeriesId;
+	current: string;
+}
+const { id, current } = Astro.props;
+const series = SERIES[id];
+const posts = (await getPublishedPosts())
+	.filter((p) => p.data.series?.id === id)
+	.sort((a, b) => a.data.series!.order - b.data.series!.order);
+const label = (order: number) => (order === 0 ? '용어' : `${order}장`);
+---
+
+<nav class="series" aria-label={`${series.title} 시리즈`}>
+	<p class="head">
+		<span class="kicker">시리즈</span>
+		{series.title}
+		<span class="count">{posts.length}편</span>
+	</p>
+	<ol>
+		{
+			posts.map((p) => (
+				<li>
+					<a href={`/blog/${p.id}/`} aria-current={p.id === current ? 'page' : undefined}>
+						<span class="no">{label(p.data.series!.order)}</span>
+						<span class="t">{p.data.title}</span>
+						{p.data.draft && <span class="draft">초안</span>}
+					</a>
+				</li>
+			))
+		}
+	</ol>
+</nav>
+
+<style>
+	.series {
+		margin-bottom: 2.5rem;
+		padding: 16px 20px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+	}
+	.head {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		margin: 0 0 8px;
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.kicker {
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: var(--ok);
+	}
+	.count {
+		margin-left: auto;
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: var(--muted);
+	}
+	ol {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	a {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+		padding: 5px 8px;
+		margin: 0 -8px;
+		border-radius: 8px;
+		color: var(--ink-soft);
+		text-decoration: none;
+		font-size: 0.93rem;
+	}
+	a:hover {
+		background: var(--code-inline-bg);
+	}
+	a[aria-current] {
+		color: var(--accent);
+		font-weight: 650;
+		background: var(--accent-soft);
+	}
+	.no {
+		flex: 0 0 2.6em;
+		font-size: 0.8rem;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	a[aria-current] .no {
+		color: inherit;
+	}
+	.draft {
+		margin-left: auto;
+		font-size: 0.75rem;
+		color: var(--fail);
+	}
+</style>

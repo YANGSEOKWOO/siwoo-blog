@@ -1,0 +1,173 @@
+---
+/** java 프로세스 하나의 메모리 지도. JVM 자신의 영역 / 내 자바 프로그램용 영역 / 함께 쓰는 스레드 스택 */
+---
+
+<figure class="mem">
+	<p class="outer-title">java 프로세스 <span>OS가 만든 프로세스 1개 = JVM 1개</span></p>
+
+	<div class="band jvm">
+		<p class="band-title"><i></i>JVM 자신의 것 <span>일반 프로그램과 같음</span></p>
+		<div class="regions three">
+			<div class="r"><b>코드</b><small>JVM 프로그램의 기계어 (jvm.dll 등)</small></div>
+			<div class="r"><b>데이터</b><small>JVM 프로그램의 전역 변수</small></div>
+			<div class="r"><b>네이티브 힙</b><small>JVM이 malloc으로 쓰는 메모리</small></div>
+		</div>
+	</div>
+
+	<div class="band mine">
+		<p class="band-title"><i></i>내 자바 프로그램을 위해 JVM이 마련한 구역 <span>OS에 직접 요청해 따로 받은 땅</span></p>
+		<div class="regions">
+			<div class="r heap">
+				<b>자바 힙</b>
+				<small><code>new</code>로 만든 객체 + static 변수 · 가비지 컬렉터가 청소 · <code>-Xmx</code>로 최대 크기 지정</small>
+				<em>모든 스레드가 공유</em>
+			</div>
+			<div class="r"><b>메타스페이스</b><small>내 클래스의 바이트코드, 메서드·필드 정보</small></div>
+			<div class="r"><b>코드 캐시</b><small>JIT가 번역해 둔 기계어</small></div>
+		</div>
+	</div>
+
+	<div class="band both">
+		<p class="band-title"><i></i>둘이 함께 쓰는 것 <span>스레드마다 하나씩, 각자 따로</span></p>
+		<div class="regions stacks">
+			{
+				[1, 2, 3].map((n) => (
+					<div class="r stack">
+						<b>스레드 {n} 스택</b>
+						<small>메서드 호출 기록, 지역 변수</small>
+					</div>
+				))
+			}
+			<div class="r more">…</div>
+		</div>
+	</div>
+</figure>
+
+<style>
+	.mem {
+		margin: 0;
+		padding: 14px 16px 16px;
+		background: var(--bg);
+		border: 1.5px solid var(--ink-soft);
+		border-radius: 14px;
+		display: grid;
+		gap: 10px;
+	}
+	.outer-title {
+		margin: 0;
+		font-weight: 750;
+		font-size: 0.92rem;
+		color: var(--ink);
+	}
+	.outer-title span,
+	.band-title span {
+		margin-left: 6px;
+		font-size: 0.72rem;
+		font-weight: 500;
+		color: var(--muted);
+	}
+	.band {
+		--c: var(--muted);
+		padding: 10px 12px 12px;
+		border-radius: 10px;
+		border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+		background: color-mix(in srgb, var(--c) 6%, transparent);
+	}
+	.band.mine {
+		--c: var(--accent);
+	}
+	.band.both {
+		--c: var(--ok);
+	}
+	.band-title {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		margin: 0 0 8px;
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.band-title i {
+		display: inline-block;
+		width: 9px;
+		height: 9px;
+		margin-right: 7px;
+		border-radius: 3px;
+		background: var(--c);
+	}
+	.regions {
+		display: grid;
+		grid-template-columns: 1.4fr 1fr 1fr;
+		gap: 6px;
+	}
+	.regions.three {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.regions.stacks {
+		grid-template-columns: repeat(3, minmax(0, 1fr)) 2.4em;
+	}
+	.r {
+		min-width: 0;
+		padding: 8px 10px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 8px;
+	}
+	.r b {
+		display: block;
+		font-size: 0.82rem;
+		color: var(--ink);
+	}
+	.r small {
+		display: block;
+		margin-top: 2px;
+		font-size: 0.72rem;
+		line-height: 1.5;
+		color: var(--muted);
+	}
+	.r code {
+		font-size: 0.68rem;
+		padding: 0 4px;
+		background: var(--code-inline-bg);
+		border-radius: 4px;
+	}
+	.r.heap {
+		border: 1.5px solid var(--accent);
+	}
+	.r.heap em {
+		display: inline-block;
+		margin-top: 6px;
+		padding: 1px 8px;
+		font-style: normal;
+		font-size: 0.7rem;
+		font-weight: 700;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 999px;
+	}
+	.r.stack {
+		border-top: 3px solid var(--ok);
+	}
+	.r.more {
+		display: grid;
+		place-items: center;
+		color: var(--muted);
+		border-style: dashed;
+	}
+	@media (max-width: 720px) {
+		.mem {
+			padding: 12px;
+		}
+		.regions,
+		.regions.three {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.regions.stacks {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+		.r.more {
+			display: none;
+		}
+	}
+</style>

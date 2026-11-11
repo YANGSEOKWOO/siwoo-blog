@@ -1,0 +1,187 @@
+---
+/** 자바 Thread 객체와 OS 스레드의 연결. 플랫폼 스레드는 1:1, 가상 스레드는 여러 개가 적은 OS 스레드를 번갈아 사용. */
+---
+
+<figure class="map">
+	<div class="panel">
+		<p class="ptitle">플랫폼 스레드 <span class="badge">1 : 1</span></p>
+		<div class="cols-head">
+			<span>자바 세계 · 리모컨</span>
+			<span></span>
+			<span>OS 세계 · 실제 실행</span>
+		</div>
+		{
+			[1, 2, 3].map((n) => (
+				<div class="pair">
+					<div class="obj">
+						Thread 객체 {n}
+						<small>자바 힙에 있음</small>
+					</div>
+					<div class="link" aria-hidden="true" />
+					<div class="os">
+						OS 스레드 {n}
+						<small>CPU에서 실행됨</small>
+					</div>
+				</div>
+			))
+		}
+		<p class="note"><code>start()</code>하는 순간 JVM이 OS에 요청해 OS 스레드를 하나 만들고 연결합니다.</p>
+	</div>
+
+	<div class="panel virt">
+		<p class="ptitle">가상 스레드 <span class="badge">N : M</span><span class="tag">이 책의 주제</span></p>
+		<div class="vgrid">
+			<div class="chips">
+				{['V1', 'V2', 'V3', 'V4', 'V5', 'V6'].map((v, i) => <span class:list={['chip', { riding: i === 1 || i === 4 }]}>{v}</span>)}
+			</div>
+			<div class="funnel" aria-hidden="true">→</div>
+			<div class="carriers">
+				<div class="os">
+					OS 스레드 1<small>지금 V2가 타고 있음</small>
+				</div>
+				<div class="os">
+					OS 스레드 2<small>지금 V5가 타고 있음</small>
+				</div>
+			</div>
+		</div>
+		<p class="note">가상 스레드 여러 개가 적은 수의 OS 스레드를 번갈아 빌려 탑니다. 1:1 연결이 끊어진 것입니다.</p>
+	</div>
+</figure>
+
+<style>
+	.map {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 12px;
+		margin: 0;
+	}
+	.panel {
+		padding: 14px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+	}
+	.ptitle {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 0 10px;
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.badge {
+		padding: 0 8px;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.72rem;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 999px;
+	}
+	.tag {
+		margin-left: auto;
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: var(--ok);
+	}
+	.cols-head,
+	.pair {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
+		align-items: center;
+	}
+	.cols-head {
+		margin-bottom: 4px;
+		font-size: 0.68rem;
+		font-weight: 650;
+		color: var(--muted);
+	}
+	.pair + .pair {
+		margin-top: 6px;
+	}
+	.obj,
+	.os {
+		padding: 6px 10px;
+		font-size: 0.8rem;
+		font-weight: 650;
+		color: var(--ink);
+		border-radius: 8px;
+	}
+	.obj {
+		background: var(--accent-soft);
+		border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+	}
+	.os {
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-left: 3px solid var(--ok);
+	}
+	.obj small,
+	.os small {
+		display: block;
+		font-size: 0.68rem;
+		font-weight: 500;
+		color: var(--muted);
+	}
+	.link {
+		height: 2px;
+		background: var(--accent);
+		position: relative;
+	}
+	.link::after {
+		content: '';
+		position: absolute;
+		right: -1px;
+		top: -4px;
+		border: 5px solid transparent;
+		border-left-color: var(--accent);
+		border-right: 0;
+	}
+	.vgrid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+		align-items: center;
+	}
+	.chips {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+	}
+	.chip {
+		padding: 6px 0;
+		text-align: center;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.74rem;
+		font-weight: 700;
+		color: var(--accent);
+		border: 1px dashed color-mix(in srgb, var(--accent) 50%, transparent);
+		border-radius: 999px;
+	}
+	.chip.riding {
+		color: var(--surface);
+		background: var(--accent);
+		border-style: solid;
+	}
+	.funnel {
+		text-align: center;
+		color: var(--muted);
+	}
+	.carriers {
+		display: grid;
+		gap: 6px;
+	}
+	.note {
+		margin: 10px 0 0;
+		font-size: 0.74rem;
+		line-height: 1.6;
+		color: var(--muted);
+	}
+	.note code {
+		font-size: 0.7rem;
+	}
+	@media (max-width: 720px) {
+		.map {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

@@ -1,0 +1,280 @@
+---
+/**
+ * CPU 코어가 시간에 따라 어떤 작업을 실행하는지 보여 주는 타임라인.
+ * 위: 코어 관점(지금 실제로 실행 중인 작업) / 아래: 작업 관점(실행 중 vs 진행 중이지만 대기)
+ *
+ *   <CoreTimeline title="코어 1개 · 작업 3개" cores={['ABCACBABC']} />
+ *   <CoreTimeline title="코어 3개 · 작업 3개" cores={['AAAAAAAAA', 'BBBBBBB..', 'CCCCCCCC.']} />
+ *
+ * cores: 코어 하나당 문자열 하나. 글자 하나가 시간 한 칸, A~D는 작업, '.'은 쉬는 칸.
+ * 자동으로 시간이 흐르고, 칸 위에 마우스를 올리면 그 순간에서 멈춥니다.
+ */
+interface Props {
+	title: string;
+	cores: string[];
+	caption?: string;
+}
+const { title, cores, caption } = Astro.props;
+
+const lanes = cores.map((s) => [...s]);
+const n = Math.max(...lanes.map((l) => l.length));
+lanes.forEach((l) => {
+	while (l.length < n) l.push('.');
+});
+const steps = [...Array(n).keys()];
+const tasks = [...new Set(lanes.flat())].filter((x) => x !== '.').sort();
+
+type State = 'run' | 'wait' | 'none';
+const states: Record<string, State[]> = {};
+for (const task of tasks) {
+	const runs = steps.map((t) => lanes.some((l) => l[t] === task));
+	const first = runs.indexOf(true);
+	const last = runs.lastIndexOf(true);
+	states[task] = runs.map((r, t) => (r ? 'run' : t > first && t < last ? 'wait' : 'none'));
+}
+
+const readouts = steps.map((t) => {
+	const running = lanes.map((l) => l[t]).filter((x) => x !== '.');
+	const inProgress = tasks.filter((task) => states[task][t] !== 'none');
+	return { running, inProgress };
+});
+
+const kind =
+	cores.length === 1 ? '동시성' : tasks.length <= cores.length ? '병렬성' : '동시성 + 병렬성';
+---
+
+<figure class="ct" data-n={n} data-readouts={JSON.stringify(readouts)}>
+	<figcaption class="head">
+		<span class="title">{title}</span>
+		<span class:list={['badge', { par: kind !== '동시성' }]}>{kind}</span>
+	</figcaption>
+
+	<div class="grid" style={`--n:${n}`}>
+		<span class="section">코어 관점 · 지금 실제로 실행 중인 작업</span>
+		{
+			lanes.map((lane, i) => (
+				<>
+					<span class="label">코어 {i + 1}</span>
+					{lane.map((x, t) => (
+						<span class:list={['cell', x === '.' ? 'idle' : 'run']} data-t={t} style={x !== '.' ? `--c:var(--${x})` : undefined}>
+							{x !== '.' && x}
+						</span>
+					))}
+				</>
+			))
+		}
+
+		<span class="section">작업 관점 · 실행 중인지, 진행 중이지만 기다리는지</span>
+		{
+			tasks.map((task) => (
+				<>
+					<span class="label">작업 {task}</span>
+					{states[task].map((s, t) => (
+						<span class:list={['cell', s]} data-t={t} style={`--c:var(--${task})`} />
+					))}
+				</>
+			))
+		}
+
+		<span class="label"></span>
+		{steps.map((t) => <span class="tick" data-t={t}>t{t + 1}</span>)}
+	</div>
+
+	<p class="readout" aria-live="off">
+		<span class="now-t">t1</span>
+		<span>실행 중 <b class="doing">-</b></span>
+		<span>진행 중 <b class="dealing">-</b></span>
+	</p>
+	{caption && <p class="caption">{caption}</p>}
+</figure>
+
+<script>
+	const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+	for (const fig of document.querySelectorAll<HTMLElement>('figure.ct')) {
+		const n = Number(fig.dataset.n);
+		const readouts: { running: string[]; inProgress: string[] }[] = JSON.parse(fig.dataset.readouts ?? '[]');
+		const cells = [...fig.querySelectorAll<HTMLElement>('[data-t]')];
+		const nowT = fig.querySelector('.now-t')!;
+		const doing = fig.querySelector('.doing')!;
+		const dealing = fig.querySelector('.dealing')!;
+		const fmt = (xs: string[]) => (xs.length ? `${xs.length}개 (${xs.join(', ')})` : '0개');
+
+		let t = 0;
+		let paused = false;
+		const show = (step: number) => {
+			t = step;
+			cells.forEach((c) => c.classList.toggle('now', Number(c.dataset.t) === t));
+			nowT.textContent = `t${t + 1}`;
+			doing.textContent = fmt(readouts[t].running);
+			dealing.textContent = fmt(readouts[t].inProgress);
+		};
+		show(0);
+
+		// 칸에 마우스를 올리면 그 순간에서 멈춤
+		fig.querySelector('.grid')!.addEventListener('pointerover', (e) => {
+			const step = (e.target as HTMLElement).dataset?.t;
+			if (step !== undefined) {
+				paused = true;
+				show(Number(step));
+			}
+		});
+		fig.addEventListener('pointerleave', () => (paused = false));
+
+		if (!reduce) {
+			let visible = false;
+			new IntersectionObserver(([entry]) => (visible = entry.isIntersecting)).observe(fig);
+			setInterval(() => {
+				if (visible && !paused) show((t + 1) % n);
+			}, 900);
+		}
+	}
+</script>
+
+<style>
+	.ct {
+		--A: var(--accent);
+		--B: var(--ok);
+		--C: #c47a06;
+		--D: #8a4fd8;
+		margin: 0;
+		padding: 16px 18px 14px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+	}
+	:global(:root[data-theme='dark']) .ct {
+		--C: #f0b45a;
+		--D: #b896ff;
+	}
+	.head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 12px;
+	}
+	.title {
+		font-weight: 700;
+		color: var(--ink);
+		font-size: 0.95rem;
+	}
+	.badge {
+		margin-left: auto;
+		padding: 1px 10px;
+		font-size: 0.75rem;
+		font-weight: 700;
+		border-radius: 999px;
+		color: var(--accent);
+		background: var(--accent-soft);
+	}
+	.badge.par {
+		color: var(--ok);
+		background: color-mix(in srgb, var(--ok) 14%, transparent);
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: 3.6em repeat(var(--n), minmax(0, 1fr));
+		gap: 4px;
+		align-items: center;
+	}
+	.section {
+		grid-column: 1 / -1;
+		margin: 6px 0 2px;
+		font-size: 0.72rem;
+		font-weight: 650;
+		color: var(--muted);
+	}
+	.section:first-child {
+		margin-top: 0;
+	}
+	.label {
+		font-size: 0.75rem;
+		color: var(--ink-soft);
+		white-space: nowrap;
+	}
+	.cell {
+		display: grid;
+		place-items: center;
+		height: 26px;
+		border-radius: 5px;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 700;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+	}
+	.cell.run {
+		background: var(--c);
+		color: var(--surface);
+	}
+	.cell.idle {
+		border: 1px dashed var(--line);
+	}
+	/* 진행 중이지만 코어를 못 받아서 기다리는 칸 */
+	.cell.wait {
+		background: repeating-linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--c) 30%, transparent) 0 3px,
+			transparent 3px 7px
+		);
+		border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+	}
+	.cell.none {
+		background: transparent;
+	}
+	.cell.now {
+		box-shadow: 0 0 0 2px var(--ink);
+		transform: translateY(-1px);
+	}
+	.cell.none.now {
+		box-shadow: inset 0 0 0 1px var(--line);
+		transform: none;
+	}
+	.tick {
+		text-align: center;
+		font-size: 0.68rem;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	.tick.now {
+		color: var(--ink);
+		font-weight: 700;
+	}
+
+	.readout {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 16px;
+		margin: 12px 0 0;
+		font-size: 0.82rem;
+		color: var(--muted);
+	}
+	.now-t {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.readout b {
+		color: var(--ink);
+		font-weight: 650;
+	}
+	.caption {
+		margin: 6px 0 0;
+		font-size: 0.82rem;
+		color: var(--muted);
+	}
+	@media (max-width: 720px) {
+		.ct {
+			padding: 14px 12px 12px;
+		}
+		.grid {
+			grid-template-columns: 3.2em repeat(var(--n), minmax(0, 1fr));
+			gap: 3px;
+		}
+		.cell {
+			height: 22px;
+			font-size: 0.68rem;
+		}
+	}
+</style>

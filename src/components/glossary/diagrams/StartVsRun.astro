@@ -1,0 +1,199 @@
+---
+/** t.run()과 t.start()를 시간 축으로 비교. run()은 main이 직접 실행, start()는 새 스레드가 생겨 동시에 실행. */
+type Block = { from: number; to: number; text: string; kind: 'plain' | 'run' | 'prep' | 'next' };
+type Lane = { name: string; tone: 'main' | 'new'; blocks: Block[] };
+const panels: { title: string; code: string; lanes: Lane[]; note: string; ok: boolean }[] = [
+	{
+		title: '직접 호출',
+		code: 't.run()',
+		lanes: [
+			{
+				name: 'main',
+				tone: 'main',
+				blocks: [
+					{ from: 1, to: 2, text: 'new Thread(...)', kind: 'plain' },
+					{ from: 3, to: 6, text: 'run() → 람다 실행', kind: 'run' },
+					{ from: 7, to: 8, text: '다음 줄', kind: 'next' },
+				],
+			},
+		],
+		note: '새 스레드가 생기지 않습니다. main이 평범한 메서드처럼 실행하고, 끝날 때까지 다음 줄로 못 갑니다.',
+		ok: false,
+	},
+	{
+		title: '스레드 시작',
+		code: 't.start()',
+		lanes: [
+			{
+				name: 'main',
+				tone: 'main',
+				blocks: [
+					{ from: 1, to: 2, text: 'new Thread(...)', kind: 'plain' },
+					{ from: 3, to: 4, text: 'start() 요청', kind: 'prep' },
+					{ from: 5, to: 8, text: '다음 줄 계속 진행', kind: 'next' },
+				],
+			},
+			{
+				name: 'Thread-0',
+				tone: 'new',
+				blocks: [
+					{ from: 5, to: 5, text: '태어남', kind: 'prep' },
+					{ from: 6, to: 8, text: 'run() → 람다 실행', kind: 'run' },
+				],
+			},
+		],
+		note: 'start()가 JVM을 통해 OS에 새 스레드를 요청하고 바로 돌아옵니다. 람다는 새 스레드에서, main과 동시에 실행됩니다.',
+		ok: true,
+	},
+];
+---
+
+<figure class="svr">
+	{
+		panels.map((p) => (
+			<div class:list={['panel', { ok: p.ok }]}>
+				<p class="ptitle">
+					<code>{p.code}</code>
+					<span>{p.title}</span>
+				</p>
+				<div class="lanes">
+					{p.lanes.map((lane) => (
+						<div class:list={['lane', lane.tone]}>
+							<span class="lname">{lane.name}</span>
+							<div class="track">
+								{lane.blocks.map((b) => (
+									<span class:list={['blk', b.kind]} style={`grid-column:${b.from} / ${b.to + 1}`}>
+										{b.text}
+									</span>
+								))}
+							</div>
+						</div>
+					))}
+					<div class="lane axis" aria-hidden="true">
+						<span class="lname" />
+						<div class="track">
+							<span class="time">시간 →</span>
+						</div>
+					</div>
+				</div>
+				<p class="note">{p.note}</p>
+			</div>
+		))
+	}
+</figure>
+
+<style>
+	.svr {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 12px;
+		margin: 0;
+	}
+	.panel {
+		--tone: var(--fail);
+		padding: 14px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-top: 3px solid var(--tone);
+		border-radius: 12px;
+	}
+	.panel.ok {
+		--tone: var(--ok);
+	}
+	.ptitle {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		margin: 0 0 12px;
+	}
+	.ptitle code {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: var(--tone);
+	}
+	.ptitle span {
+		font-size: 0.78rem;
+		color: var(--muted);
+	}
+	.lanes {
+		display: grid;
+		gap: 6px;
+	}
+	.lane {
+		display: grid;
+		gap: 3px;
+	}
+	.lname {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--accent);
+	}
+	.lane.new .lname {
+		color: var(--ok);
+	}
+	.track {
+		display: grid;
+		grid-template-columns: repeat(8, minmax(0, 1fr));
+		gap: 3px;
+		min-height: 34px;
+	}
+	.blk {
+		display: grid;
+		place-items: center;
+		padding: 4px 4px;
+		font-size: 0.7rem;
+		font-weight: 600;
+		line-height: 1.3;
+		text-align: center;
+		border-radius: 6px;
+		color: var(--ink-soft);
+		background: var(--surface);
+		border: 1px solid var(--line);
+	}
+	.lane.main .blk.run {
+		color: var(--surface);
+		background: var(--accent);
+		border-color: var(--accent);
+	}
+	.lane.new .blk.run {
+		color: var(--surface);
+		background: var(--ok);
+		border-color: var(--ok);
+	}
+	.blk.prep {
+		background: repeating-linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--muted) 18%, transparent) 0 3px,
+			transparent 3px 7px
+		);
+		border-style: dashed;
+	}
+	.blk.next {
+		color: var(--muted);
+		border-style: dashed;
+	}
+	.lane.axis .track {
+		min-height: 0;
+	}
+	.time {
+		grid-column: 1 / -1;
+		font-size: 0.66rem;
+		color: var(--muted);
+		text-align: right;
+		border-top: 1px solid var(--line);
+		padding-top: 2px;
+	}
+	.note {
+		margin: 10px 0 0;
+		font-size: 0.76rem;
+		line-height: 1.6;
+		color: var(--muted);
+	}
+	@media (max-width: 720px) {
+		.svr {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

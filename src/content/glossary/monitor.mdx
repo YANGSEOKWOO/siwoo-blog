@@ -1,0 +1,45 @@
+---
+term: 모니터 (모든 객체의 락)
+en: Monitor
+group: sync
+order: 4
+summary: 자바의 모든 객체가 태어날 때부터 하나씩 달고 나오는 내장 자물쇠입니다. 그래서 synchronized (아무 객체)로 바로 잠글 수 있습니다.
+related: [synchronized, syntax-vs-library, jvm]
+---
+
+```java
+synchronized (this) { ... }
+synchronized (list) { ... }
+synchronized (new Object()) { ... }
+```
+
+괄호 안에 **아무 객체나** 넣을 수 있습니다. 자바는 **모든 객체가 자물쇠를 하나씩 달고 태어나도록** 만들어졌기 때문입니다. 이 내장 자물쇠를 **모니터**라고 부릅니다. JVM은 객체를 만들 때마다 객체 머리 부분(헤더)에 잠금 상태를 기록할 자리를 둡니다.
+
+> 비유: 모든 방(객체)에 문 잠금장치가 **기본으로 달려 있습니다.**
+> `synchronized (어떤방)`은 그 방 문을 잠그고 들어간다는 뜻입니다. `synchronized` 메서드는 `this`, 즉 자기 방의 문을 잠급니다.
+
+**반납 체계와는 다른 이야기입니다**
+
+| | 답하는 질문 | 비유 |
+|---|---|---|
+| 모니터 (모든 객체가 락을 가짐) | **자물쇠는 어디 있나?** | 모든 방에 잠금장치가 기본으로 달려 있음 |
+| [synchronized](#term-synchronized) | **어떻게 잠그고 반납하나?** | 들어가면 잠기고 나오면 열리는 자동문 규칙 |
+
+C 언어에서는 자물쇠를 먼저 따로 만들어야 했습니다(`pthread_mutex_t m;`). 자바는 **객체가 자물쇠를 제공하고, `synchronized`가 그 자물쇠를 잠그고 반납합니다.** 둘 다 언어에 내장되어 있어서 자바를 "처음부터 멀티스레드를 전제로 만든 언어"라고 부릅니다.
+
+`wait()`, `notify()`가 `Object` 클래스에 들어 있는 것도 같은 이유입니다. "이 방 안에서 기다릴게 / 기다리는 사람 깨워 줘"라는 기능이 자물쇠와 한 세트입니다.
+
+**좋은 설계일까요?**
+
+- **좋은 점**: 자물쇠를 따로 만들 필요 없이 `synchronized` 한 단어로 바로 쓸 수 있습니다.
+- **아쉬운 점**: **남도 내 자물쇠를 잠글 수 있습니다.** 내 객체를 받은 외부 코드가 `synchronized (내객체)`를 하면, 의도하지 않게 서로 기다리거나 데드락이 생길 수 있습니다. `wait()`/`notify()`도 실수하기 쉽습니다.
+
+그래서 실무에서는 바깥에 노출되지 않는 **전용 자물쇠**를 두거나, `java.util.concurrent`의 도구(`ReentrantLock`, `AtomicInteger`, `ConcurrentHashMap`)를 주로 씁니다.
+
+```java
+private final Object lock = new Object();   // 나만 아는 자물쇠
+
+void increment() {
+    synchronized (lock) { count++; }
+}
+```

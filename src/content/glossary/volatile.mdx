@@ -1,0 +1,47 @@
+---
+term: volatile
+en: volatile
+group: sync
+order: 5
+summary: 다른 스레드가 바꾼 값을 항상 최신으로 읽게 하는 키워드입니다. 보이는 것(가시성)만 보장하고, 동시에 들어오는 것은 막지 못합니다.
+related: [synchronized, race-condition, jvm]
+---
+
+```java
+boolean running = true;
+
+// 스레드 A
+while (running) {
+    // 일하기
+}
+
+// 스레드 B (나중에)
+running = false;   // 멈추라고 했는데... A가 안 멈출 수 있음
+```
+
+B가 `false`로 바꿨는데 A가 계속 도는 일이 실제로 생깁니다. 이유는 두 가지입니다.
+
+- **CPU 캐시**: 코어마다 전용 메모리(캐시)가 있어서, A는 자기 캐시에 남은 옛날 값 `true`를 계속 볼 수 있습니다.
+- **JIT 최적화**: [JVM](#term-jvm)의 JIT 컴파일러가 "루프 안에서 `running`을 아무도 안 바꾸네?"라고 판단해서, 값을 한 번만 읽고 계속 재사용하도록 코드를 바꿔 버릴 수 있습니다.
+
+```java
+private volatile boolean running = true;
+```
+
+`volatile`을 붙이면 **"이 변수는 다른 스레드가 바꿀 수 있으니, 읽을 때마다 진짜 최신 값을 읽어라"** 라는 뜻이 됩니다.
+
+**주의: `volatile`로는 `count++`를 막을 수 없습니다**
+
+```java
+private volatile int count = 0;
+count++;   // 여전히 경쟁 조건 발생
+```
+
+`volatile`은 최신 값을 **보게** 해 줄 뿐, 읽기 → 더하기 → 쓰기 사이에 다른 스레드가 **끼어드는 것**은 막지 못합니다 ([경쟁 조건](#term-race-condition)).
+
+| | 동시에 들어오기 막기 | 최신 값 보기 |
+|---|---|---|
+| [synchronized](#term-synchronized) | O | O |
+| `volatile` | X | O |
+
+"`volatile`에 쓴 값은 다른 스레드가 반드시 본다" 같은 규칙은 **자바 메모리 모델(JMM)** 이라는 공식 명세에 정의되어 있습니다. 그래서 단순한 관례가 아니라 언어가 보장하는 약속입니다.

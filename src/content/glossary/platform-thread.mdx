@@ -1,0 +1,26 @@
+---
+term: 플랫폼 스레드
+en: Platform Thread
+group: jvm
+order: 3
+summary: new Thread()로 만드는 기존 자바 스레드입니다. start()하는 순간 OS 스레드 하나와 1:1로 연결되고, Thread 객체는 그 OS 스레드를 조종하는 리모컨입니다.
+related: [process-and-thread, jvm, jvm-memory, start-vs-run]
+---
+
+import ThreadMapping from '../../components/glossary/diagrams/ThreadMapping.astro';
+
+```java
+Thread t = new Thread(() -> work());   // ① 자바 객체만 생김 (아직 OS 스레드 없음)
+t.start();                             // ② 이때 JVM이 OS에 요청 → 진짜 OS 스레드 생성
+```
+
+자바의 `Thread`에는 두 가지 측면이 있습니다.
+
+- **`Thread` 객체**: 자바 힙에 있는 평범한 객체입니다. `start()`, `join()`, `interrupt()`로 OS 스레드를 조종하는 **리모컨**입니다.
+- **OS 스레드**: 실제로 CPU에서 코드를 실행하는 쪽입니다. 스택도 이쪽에 있습니다.
+
+그래서 "자바 스레드 = OS 스레드"라고 해도 대체로 맞습니다. 정확히는 **자바 스레드 객체가 OS 스레드 하나를 붙잡고 조종한다**입니다.
+
+<ThreadMapping />
+
+가상 스레드가 나오면서, 기존의 1:1 방식을 **플랫폼 스레드**라고 부르게 되었습니다. 플랫폼 스레드는 OS 스레드를 하나씩 통째로 차지해서 무겁습니다. 가상 스레드는 자기 스택을 자바 힙에 보관해 두었다가 실행할 때만 OS 스레드에 올라타기 때문에, 수백만 개를 만들어도 됩니다. 가상 스레드는 책을 읽으며 자세히 정리할 예정입니다.

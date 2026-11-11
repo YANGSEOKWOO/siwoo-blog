@@ -1,0 +1,260 @@
+---
+/**
+ * 스레드 두 개가 count++를 동시에 실행할 때의 단계별 표.
+ * 버튼으로 "synchronized 없음 / 있음"을 바꿔 볼 수 있습니다.
+ *
+ *   <RaceSteps />                  ← 경쟁 조건부터 보여 줌
+ *   <RaceSteps initial="locked" />  ← synchronized 적용부터 보여 줌
+ */
+interface Props {
+	initial?: 'race' | 'locked';
+}
+const { initial = 'race' } = Astro.props;
+
+type Step = { a?: string; b?: string; aWait?: boolean; bWait?: boolean; count: number; mark?: 'lock' | 'unlock' | 'lost' };
+const race: Step[] = [
+	{ a: 'count 읽기 → 0', count: 0 },
+	{ b: 'count 읽기 → 0', count: 0 },
+	{ a: '0 + 1 = 1', count: 0 },
+	{ b: '0 + 1 = 1', count: 0 },
+	{ a: 'count에 1 쓰기', count: 1 },
+	{ b: 'count에 1 쓰기', count: 1, mark: 'lost' },
+];
+const locked: Step[] = [
+	{ a: '잠금 획득', bWait: true, b: '문 앞에서 대기', count: 0, mark: 'lock' },
+	{ a: 'count 읽기 → 0', bWait: true, count: 0 },
+	{ a: '0 + 1 = 1', bWait: true, count: 0 },
+	{ a: 'count에 1 쓰기 · 반납', bWait: true, count: 1, mark: 'unlock' },
+	{ b: '잠금 획득 · 읽기 → 1', count: 1, mark: 'lock' },
+	{ b: '1 + 1 = 2', count: 1 },
+	{ b: 'count에 2 쓰기 · 반납', count: 2, mark: 'unlock' },
+];
+const modes = [
+	{ key: 'race', label: 'synchronized 없음', steps: race, result: '두 번 더했는데 count = 1 · A가 쓴 값을 B가 덮어써서 사라졌습니다', ok: false },
+	{ key: 'locked', label: 'synchronized 있음', steps: locked, result: 'count = 2 · 한 번에 한 스레드만 들어가서 결과가 맞습니다', ok: true },
+] as const;
+---
+
+<figure class="race" data-mode={initial}>
+	<div class="head">
+		<span class="title">스레드 A, B가 동시에 <code>count++</code></span>
+		<div class="toggle" role="group" aria-label="보기 선택">
+			{
+				modes.map((m) => (
+					<button type="button" data-key={m.key} aria-pressed={m.key === initial ? 'true' : 'false'}>
+						{m.label}
+					</button>
+				))
+			}
+		</div>
+	</div>
+
+	{
+		modes.map((m) => (
+			<div class="panel" data-panel={m.key}>
+				<div class="row hdr">
+					<span>순서</span>
+					<span class="who a">스레드 A</span>
+					<span class="who b">스레드 B</span>
+					<span class="cnt">힙의 count</span>
+				</div>
+				{m.steps.map((s, i) => (
+					<div class:list={['row', s.mark]} style={`--i:${i}`}>
+						<span class="no">{i + 1}</span>
+						<span class:list={['cell a', { on: s.a && !s.aWait, wait: s.aWait }]}>{s.a ?? ''}</span>
+						<span class:list={['cell b', { on: s.b && !s.bWait, wait: s.bWait }]}>{s.bWait ? (s.b ?? '대기') : (s.b ?? '')}</span>
+						<span class="cnt val">{s.count}</span>
+					</div>
+				))}
+				<p class:list={['result', { ok: m.ok }]}>{m.result}</p>
+			</div>
+		))
+	}
+</figure>
+
+<script>
+	for (const fig of document.querySelectorAll<HTMLElement>('figure.race')) {
+		const buttons = [...fig.querySelectorAll<HTMLButtonElement>('button[data-key]')];
+		buttons.forEach((btn) =>
+			btn.addEventListener('click', () => {
+				fig.dataset.mode = btn.dataset.key;
+				buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+			}),
+		);
+	}
+</script>
+
+<style>
+	.race {
+		--A: var(--accent);
+		--B: #c47a06;
+		margin: 0;
+		padding: 16px 18px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+	}
+	:global(:root[data-theme='dark']) .race {
+		--B: #f0b45a;
+	}
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 12px;
+	}
+	.title {
+		font-weight: 700;
+		font-size: 0.95rem;
+		color: var(--ink);
+	}
+	.toggle {
+		display: flex;
+		margin-left: auto;
+		padding: 3px;
+		background: var(--code-inline-bg);
+		border-radius: 999px;
+	}
+	.toggle button {
+		padding: 3px 12px;
+		font: inherit;
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--muted);
+		background: transparent;
+		border: 0;
+		border-radius: 999px;
+		cursor: pointer;
+	}
+	.toggle button[aria-pressed='true'] {
+		color: var(--ink);
+		background: var(--surface);
+		box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+	}
+
+	.panel {
+		display: none;
+	}
+	.race[data-mode='race'] [data-panel='race'],
+	.race[data-mode='locked'] [data-panel='locked'] {
+		display: grid;
+		gap: 4px;
+	}
+	.row {
+		display: grid;
+		grid-template-columns: 2.2em minmax(0, 1fr) minmax(0, 1fr) 5.2em;
+		gap: 6px;
+		align-items: stretch;
+		animation: rise 0.35s both;
+		animation-delay: calc(var(--i, 0) * 70ms);
+	}
+	.row.hdr {
+		animation: none;
+		font-size: 0.72rem;
+		font-weight: 650;
+		color: var(--muted);
+	}
+	@keyframes rise {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.row {
+			animation: none;
+		}
+	}
+	.who.a {
+		color: var(--A);
+	}
+	.who.b {
+		color: var(--B);
+	}
+	.no {
+		display: grid;
+		place-items: center;
+		font-size: 0.72rem;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	.cell {
+		min-height: 30px;
+		padding: 4px 10px;
+		font-size: 0.8rem;
+		line-height: 1.5;
+		border-radius: 6px;
+		display: flex;
+		align-items: center;
+	}
+	.cell.on.a {
+		color: var(--surface);
+		background: var(--A);
+		font-weight: 600;
+	}
+	.cell.on.b {
+		color: var(--surface);
+		background: var(--B);
+		font-weight: 600;
+	}
+	.cell.wait {
+		color: var(--muted);
+		background: repeating-linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--B) 18%, transparent) 0 3px,
+			transparent 3px 7px
+		);
+		border: 1px dashed color-mix(in srgb, var(--B) 40%, transparent);
+	}
+	.cnt {
+		text-align: center;
+	}
+	.val {
+		display: grid;
+		place-items: center;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-weight: 700;
+		color: var(--ink);
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 6px;
+	}
+	.row.lost .val {
+		color: var(--fail);
+		border-color: var(--fail);
+	}
+	.row.lock .cell.on,
+	.row.unlock .cell.on {
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ink) 35%, transparent);
+	}
+	.result {
+		margin: 8px 0 0;
+		padding: 8px 12px;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--fail);
+		background: color-mix(in srgb, var(--fail) 10%, transparent);
+		border-radius: 8px;
+	}
+	.result.ok {
+		color: var(--ok);
+		background: color-mix(in srgb, var(--ok) 12%, transparent);
+	}
+	@media (max-width: 720px) {
+		.race {
+			padding: 14px 12px;
+		}
+		.toggle {
+			margin-left: 0;
+		}
+		.row {
+			grid-template-columns: 1.6em minmax(0, 1fr) minmax(0, 1fr) 3.6em;
+			gap: 4px;
+		}
+		.cell {
+			padding: 4px 6px;
+			font-size: 0.74rem;
+		}
+	}
+</style>

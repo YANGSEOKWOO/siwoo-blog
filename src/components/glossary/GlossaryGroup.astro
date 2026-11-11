@@ -1,0 +1,215 @@
+---
+/**
+ * 용어 사전의 한 묶음을 카드로 그립니다. 용어 사전 글에서 `## 제목` 바로 아래에 둡니다.
+ *
+ *   ## 실행의 기본 단위
+ *   <GlossaryGroup group="basics" />
+ */
+import { render } from 'astro:content';
+import type { GlossaryGroup as Group } from '../../consts';
+import { getTerm, getTermBacklinks, getTermsInGroup } from '../../lib/glossary';
+
+// 용어(.mdx) 안에서 쓰는 그림 컴포넌트. render()로 불러온 용어 본문의 컴포넌트 CSS는
+// 페이지에 자동으로 실리지 않아서, glossary/diagrams/ 폴더를 통째로 import해 스타일을 포함시킵니다.
+// 용어용 그림 컴포넌트는 이 폴더에 두세요.
+import.meta.glob('./diagrams/*.astro', { eager: true });
+
+interface Props {
+	group: Group;
+}
+const { group } = Astro.props;
+const terms = await getTermsInGroup(group);
+const backlinks = await getTermBacklinks();
+
+const cards = await Promise.all(
+	terms.map(async (t) => {
+		const { Content } = await render(t);
+		const related = await Promise.all(t.data.related.map((r) => getTerm(r.id)));
+		// 검색 대상: MDX의 import 줄과 컴포넌트 태그는 빼고 글자만
+		const text = (t.body ?? '').replace(/^import .*$/gm, '').replace(/<\/?[A-Z][\s\S]*?>/g, '');
+		const search = [t.data.term, t.data.en, t.data.summary, text].join(' ').toLowerCase();
+		return { t, Content, related, search, usedIn: backlinks.get(t.id) ?? [] };
+	}),
+);
+---
+
+<section class="gloss-group" data-group={group}>
+	{
+		cards.map(({ t, Content, related, search, usedIn }) => (
+			<article class="card" id={`term-${t.id}`} data-search={search}>
+				<header>
+					<h3>{t.data.term}</h3>
+					<span class="en">{t.data.en}</span>
+					<a class="anchor" href={`#term-${t.id}`} aria-label={`${t.data.term} 링크`}>
+						#
+					</a>
+				</header>
+				<p class="summary">{t.data.summary}</p>
+				<div class="body">
+					<Content />
+				</div>
+				{(related.length > 0 || usedIn.length > 0) && (
+					<footer>
+						{related.length > 0 && (
+							<div class="row">
+								<span class="label">함께 보기</span>
+								<ul>
+									{related.map((r) => (
+										<li>
+											<a class="chip" href={`#term-${r.id}`}>
+												{r.data.term}
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+						{usedIn.length > 0 && (
+							<div class="row">
+								<span class="label">나온 글</span>
+								<ul>
+									{usedIn.map((p) => (
+										<li>
+											<a class="chip post" href={`/blog/${p.slug}/`}>
+												{p.title}
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+					</footer>
+				)}
+			</article>
+		))
+	}
+</section>
+
+<style>
+	.gloss-group {
+		display: grid;
+		/* minmax(0, …): 긴 코드 블록이 카드를 본문 폭 밖으로 밀어내지 않게 */
+		grid-template-columns: minmax(0, 1fr);
+		gap: 16px;
+	}
+	.gloss-group[hidden] {
+		display: none;
+	}
+	.card {
+		padding: 22px 24px 20px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		scroll-margin-top: 96px;
+		transition:
+			border-color 0.2s,
+			box-shadow 0.2s;
+	}
+	.card:target {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px var(--accent-soft);
+	}
+	.card[hidden] {
+		display: none;
+	}
+	header {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: 4px 10px;
+	}
+	h3 {
+		margin: 0;
+		font-size: 1.2rem;
+		font-weight: 750;
+	}
+	.en {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.8rem;
+		color: var(--muted);
+	}
+	.anchor {
+		margin-left: auto;
+		color: var(--muted);
+		text-decoration: none;
+		opacity: 0;
+		transition: opacity 0.15s;
+	}
+	.card:hover .anchor,
+	.anchor:focus-visible {
+		opacity: 1;
+	}
+	.summary {
+		margin: 12px 0 0;
+		padding: 10px 14px;
+		background: var(--accent-soft);
+		border-radius: 8px;
+		color: var(--ink);
+		font-weight: 550;
+		font-size: 0.97rem;
+		line-height: 1.65;
+	}
+	.body {
+		margin-top: 14px;
+		font-size: 0.97rem;
+	}
+	.body :global(> *) {
+		margin: 0;
+	}
+	.body :global(> * + *) {
+		margin-top: 0.85em;
+	}
+	footer {
+		display: grid;
+		gap: 8px;
+		margin-top: 18px;
+		padding-top: 14px;
+		border-top: 1px dashed var(--line);
+	}
+	.row {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+	}
+	.label {
+		flex: 0 0 auto;
+		font-size: 0.78rem;
+		font-weight: 650;
+		color: var(--muted);
+	}
+	.row ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.row li + li {
+		margin-top: 0;
+	}
+	.chip {
+		display: inline-block;
+		padding: 1px 10px;
+		font-size: 0.82rem;
+		color: var(--ink-soft);
+		background: var(--code-inline-bg);
+		border-radius: 999px;
+		text-decoration: none;
+	}
+	.chip:hover {
+		color: var(--accent);
+	}
+	.chip.post {
+		color: var(--ok);
+	}
+	@media (max-width: 720px) {
+		.card {
+			padding: 18px 16px;
+		}
+		.row {
+			flex-direction: column;
+			gap: 4px;
+		}
+	}
+</style>

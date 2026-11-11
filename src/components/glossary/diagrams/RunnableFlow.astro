@@ -1,0 +1,176 @@
+---
+/** Runnable을 만드는 세 가지 방법 → 모두 같은 Runnable 객체 → 누구에게나 건넬 수 있음 */
+const makers = [
+	{
+		no: '①',
+		title: '클래스로 구현',
+		code: 'class MailTask\n    implements Runnable {\n  public void run() {\n    sendMail();\n  }\n}',
+	},
+	{
+		no: '②',
+		title: '익명 내부 클래스',
+		code: 'new Runnable() {\n  public void run() {\n    sendMail();\n  }\n}',
+	},
+	{ no: '③', title: '람다', code: '() -> sendMail()', short: true },
+];
+const takers = ['new Thread(task)', 'executor.submit(task)', 'Thread.ofVirtual()\n  .start(task)'];
+---
+
+<figure class="rf">
+	<p class="step">만드는 방법 · 점점 짧아짐 →</p>
+	<div class="makers">
+		{
+			makers.map((m) => (
+				<div class:list={['maker', { short: m.short }]}>
+					<p class="mtitle">
+						<span>{m.no}</span>
+						{m.title}
+					</p>
+					<pre>{m.code}</pre>
+				</div>
+			))
+		}
+	</div>
+
+	<p class="join">셋 다 같은 것을 만듭니다</p>
+
+	<div class="core">
+		<p class="ctitle">Runnable 객체 <span>= run() 하나를 가진 것 = 할 일</span></p>
+		<pre>interface Runnable {'{'}
+    void run();
+{'}'}</pre>
+	</div>
+
+	<p class="join">누구에게나 건넬 수 있습니다</p>
+
+	<div class="takers">
+		{takers.map((t) => <pre class="taker">{t}</pre>)}
+	</div>
+	<p class="foot">받은 쪽은 내용은 모르고 <code>run()</code>만 불러 줍니다</p>
+</figure>
+
+<style>
+	.rf {
+		margin: 0;
+		padding: 14px 16px 12px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		text-align: center;
+	}
+	pre {
+		margin: 0;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.7rem;
+		line-height: 1.55;
+		text-align: left;
+		white-space: pre;
+		overflow-x: auto;
+	}
+	.step,
+	.join,
+	.foot {
+		margin: 0;
+		font-size: 0.72rem;
+		color: var(--muted);
+	}
+	.step {
+		text-align: left;
+		margin-bottom: 6px;
+	}
+	.join {
+		margin: 8px 0;
+	}
+	.join::before {
+		content: '↓ ';
+		color: var(--accent);
+		font-weight: 700;
+	}
+	.makers {
+		display: grid;
+		grid-template-columns: 1.15fr 1.1fr 0.9fr;
+		gap: 8px;
+		align-items: stretch;
+	}
+	.maker {
+		min-width: 0;
+		padding: 8px 10px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 8px;
+	}
+	.maker.short {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 2px var(--accent-soft);
+	}
+	.mtitle {
+		margin: 0 0 6px;
+		font-size: 0.74rem;
+		font-weight: 700;
+		color: var(--ink);
+		text-align: left;
+	}
+	.mtitle span {
+		color: var(--accent);
+		margin-right: 4px;
+	}
+	.maker pre {
+		color: var(--ink-soft);
+	}
+	.maker.short pre {
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--accent);
+	}
+	.core {
+		display: inline-block;
+		min-width: min(100%, 320px);
+		padding: 10px 16px;
+		background: var(--accent-soft);
+		border: 1.5px solid var(--accent);
+		border-radius: 10px;
+	}
+	.ctitle {
+		margin: 0 0 6px;
+		font-size: 0.85rem;
+		font-weight: 750;
+		color: var(--ink);
+		text-align: left;
+	}
+	.ctitle span {
+		font-size: 0.72rem;
+		font-weight: 500;
+		color: var(--muted);
+	}
+	.core pre {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.takers {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+	}
+	.taker {
+		padding: 8px 10px;
+		color: var(--ok);
+		background: color-mix(in srgb, var(--ok) 10%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+		border-radius: 8px;
+	}
+	.foot {
+		margin-top: 8px;
+	}
+	.foot code {
+		font-size: 0.68rem;
+	}
+	@media (max-width: 720px) {
+		.rf {
+			padding: 12px;
+		}
+		.makers,
+		.takers {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

@@ -1,0 +1,207 @@
+---
+/**
+ * 용어 사전 맨 위의 검색창 + 전체 용어 한눈에 보기.
+ * 검색하면 아래 카드(GlossaryGroup)들 중 맞는 것만 남기고, 비어 버린 묶음은 제목째 숨깁니다.
+ */
+import { getCollection } from 'astro:content';
+import { GLOSSARY_GROUP_KEYS, GLOSSARY_GROUPS } from '../../consts';
+
+const all = await getCollection('glossary');
+const groups = GLOSSARY_GROUP_KEYS.map((key) => ({
+	key,
+	label: GLOSSARY_GROUPS[key],
+	terms: all.filter((t) => t.data.group === key).sort((a, b) => a.data.order - b.data.order),
+})).filter((g) => g.terms.length > 0);
+---
+
+<div class="gloss-index">
+	<label class="search">
+		<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"
+			><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"></circle><path
+				d="m20 20-3.5-3.5"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"></path></svg
+		>
+		<span class="sr-only">용어 검색</span>
+		<input type="search" placeholder={`용어 ${all.length}개에서 검색`} autocomplete="off" />
+		<kbd>/</kbd>
+	</label>
+
+	<div class="map">
+		{
+			groups.map((g, i) => (
+				<div class="map-row">
+					<span class="step">{i + 1}</span>
+					<span class="group">{g.label}</span>
+					<ul>
+						{g.terms.map((t) => (
+							<li data-id={t.id}>
+								<a href={`#term-${t.id}`}>{t.data.term}</a>
+							</li>
+						))}
+					</ul>
+				</div>
+			))
+		}
+	</div>
+	<p class="empty" hidden>맞는 용어가 없습니다. 모르는 용어라면 추가해 둘 차례입니다.</p>
+</div>
+
+<script>
+	const input = document.querySelector<HTMLInputElement>('.gloss-index input');
+	const empty = document.querySelector<HTMLElement>('.gloss-index .empty');
+	const cards = [...document.querySelectorAll<HTMLElement>('.gloss-group .card')];
+	const groups = [...document.querySelectorAll<HTMLElement>('.gloss-group')];
+	const chips = [...document.querySelectorAll<HTMLElement>('.gloss-index li[data-id]')];
+
+	if (input) {
+		const apply = () => {
+			const q = input.value.trim().toLowerCase();
+			let shown = 0;
+			for (const card of cards) {
+				const hit = !q || (card.dataset.search ?? '').includes(q);
+				card.hidden = !hit;
+				if (hit) shown++;
+				const chip = chips.find((c) => `term-${c.dataset.id}` === card.id);
+				if (chip) chip.classList.toggle('dim', !hit);
+			}
+			for (const g of groups) {
+				const any = [...g.querySelectorAll<HTMLElement>('.card')].some((c) => !c.hidden);
+				g.hidden = !any;
+				// 묶음 바로 위의 ## 제목도 함께 숨김
+				const head = g.previousElementSibling;
+				if (head instanceof HTMLElement && head.tagName === 'H2') head.hidden = !any;
+			}
+			if (empty) empty.hidden = shown > 0;
+		};
+		input.addEventListener('input', apply);
+		// "/" 키로 검색창 열기
+		addEventListener('keydown', (e) => {
+			const t = e.target as HTMLElement;
+			if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(t.tagName)) {
+				e.preventDefault();
+				input.focus();
+			}
+			if (e.key === 'Escape' && t === input) {
+				input.value = '';
+				apply();
+				input.blur();
+			}
+		});
+	}
+</script>
+
+<style>
+	.gloss-index {
+		display: grid;
+		gap: 16px;
+	}
+	.search {
+		position: sticky;
+		top: 72px;
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 0 14px;
+		background: var(--surface);
+		border: 1.5px solid var(--line);
+		border-radius: 12px;
+		color: var(--muted);
+		box-shadow: 0 4px 16px rgb(0 0 0 / 0.04);
+	}
+	.search:focus-within {
+		border-color: var(--accent);
+	}
+	input {
+		flex: 1;
+		min-width: 0;
+		padding: 12px 0;
+		font: inherit;
+		font-size: 0.97rem;
+		color: var(--ink);
+		background: transparent;
+		border: 0;
+		outline: none;
+	}
+	kbd {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.75rem;
+		padding: 1px 7px;
+		border: 1px solid var(--line);
+		border-radius: 5px;
+	}
+	.map {
+		display: grid;
+		gap: 10px;
+		padding: 18px 20px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+	}
+	.map-row {
+		display: grid;
+		grid-template-columns: 22px 8.5em 1fr;
+		align-items: baseline;
+		gap: 10px;
+	}
+	.step {
+		display: inline-grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 50%;
+	}
+	.group {
+		font-size: 0.85rem;
+		font-weight: 650;
+		color: var(--ink);
+	}
+	.map ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.map li + li {
+		margin-top: 0;
+	}
+	.map a {
+		display: inline-block;
+		padding: 1px 10px;
+		font-size: 0.84rem;
+		color: var(--ink-soft);
+		background: var(--code-inline-bg);
+		border-radius: 999px;
+		text-decoration: none;
+	}
+	.map a:hover {
+		color: var(--accent);
+	}
+	.map li.dim {
+		opacity: 0.3;
+	}
+	.empty {
+		margin: 0;
+		color: var(--muted);
+		text-align: center;
+	}
+	@media (max-width: 720px) {
+		.map-row {
+			grid-template-columns: 22px 1fr;
+		}
+		.map ul {
+			grid-column: 1 / -1;
+		}
+		kbd {
+			display: none;
+		}
+	}
+</style>

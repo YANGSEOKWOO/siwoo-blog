@@ -1,0 +1,154 @@
+---
+/** 태스크 12개를 new Thread로 실행할 때 vs 스레드 3개짜리 풀로 실행할 때, 동시에 실행되는 수 비교 */
+const TASKS = 12;
+const POOL = 3;
+const tasks = Array.from({ length: TASKS }, (_, i) => `T${i + 1}`);
+---
+
+<figure class="pvt">
+	<div class="panel many">
+		<p class="ptitle"><code>new Thread(task).start()</code> × {TASKS}</p>
+		<p class="label">OS 스레드 {TASKS}개가 생김 · 전부 한꺼번에 실행</p>
+		<div class="grid">
+			{
+				tasks.map((t) => (
+					<span class="th">
+						<b>{t}</b>
+						<i aria-hidden="true" />
+					</span>
+				))
+			}
+		</div>
+		<p class="note">태스크 수만큼 OS 스레드와 스택이 생깁니다. 태스크가 1만 개면 스레드도 1만 개입니다.</p>
+	</div>
+
+	<div class="panel pool">
+		<p class="ptitle"><code>newFixedThreadPool({POOL})</code> + submit × {TASKS}</p>
+		<p class="label">OS 스레드 {POOL}개를 돌려씀 · 동시 실행 최대 {POOL}개</p>
+		<div class="grid">
+			{
+				tasks.slice(0, POOL).map((t) => (
+					<span class="th">
+						<b>{t}</b>
+						<i aria-hidden="true" />
+					</span>
+				))
+			}
+		</div>
+		<p class="qlabel">대기열 · 차례를 기다림</p>
+		<div class="queue">{tasks.slice(POOL).map((t) => <span class="chip">{t}</span>)}</div>
+		<p class="note">일꾼 수가 곧 동시에 실행되는 태스크 수의 상한입니다.</p>
+	</div>
+</figure>
+
+<style>
+	.pvt {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 12px;
+		margin: 0;
+	}
+	.panel {
+		--tone: var(--fail);
+		padding: 14px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-top: 3px solid var(--tone);
+		border-radius: 12px;
+	}
+	.panel.pool {
+		--tone: var(--ok);
+	}
+	.ptitle {
+		margin: 0;
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.ptitle code {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.74rem;
+		color: var(--tone);
+	}
+	.label {
+		margin: 2px 0 10px;
+		font-size: 0.72rem;
+		color: var(--muted);
+	}
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 4px;
+	}
+	.th {
+		display: grid;
+		gap: 3px;
+		padding: 4px 2px 5px;
+		text-align: center;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-top: 3px solid var(--ok);
+		border-radius: 6px;
+	}
+	.many .th {
+		border-top-color: var(--fail);
+	}
+	.th b {
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.68rem;
+		color: var(--ink);
+	}
+	/* 스택 메모리를 나타내는 막대 */
+	.th i {
+		height: 14px;
+		margin: 0 4px;
+		border-radius: 3px;
+		background: repeating-linear-gradient(
+			0deg,
+			color-mix(in srgb, var(--tone) 35%, transparent) 0 2px,
+			transparent 2px 4px
+		);
+	}
+	.pool .th i {
+		background: repeating-linear-gradient(
+			0deg,
+			color-mix(in srgb, var(--ok) 35%, transparent) 0 2px,
+			transparent 2px 4px
+		);
+	}
+	.qlabel {
+		margin: 10px 0 5px;
+		font-size: 0.72rem;
+		font-weight: 650;
+		color: var(--muted);
+	}
+	.queue {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		padding: 6px;
+		background: var(--surface);
+		border: 1px dashed var(--line);
+		border-radius: 8px;
+	}
+	.chip {
+		padding: 0 8px;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.68rem;
+		font-weight: 700;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 999px;
+	}
+	.note {
+		margin: 10px 0 0;
+		font-size: 0.74rem;
+		line-height: 1.6;
+		color: var(--muted);
+	}
+	@media (max-width: 720px) {
+		.pvt {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

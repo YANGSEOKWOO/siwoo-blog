@@ -1,0 +1,40 @@
+---
+title: '모던 자바 동시성 프로그래밍 — 용어 사전'
+description: '『모던 자바 동시성 프로그래밍』을 읽으며 모르던 개념을 그림과 함께 정리한 용어 사전입니다. 동시성과 병렬성, JVM과 스레드, 동기화, ExecutorService를 순서대로 다룹니다.'
+category: 'book'
+pubDate: '2026-11-12'
+tags: ['java', 'concurrency']
+book:
+  title: '모던 자바 동시성 프로그래밍'
+  author: 'A N M Bazlur Rahman'
+  publisher: "O'Reilly"
+series:
+  id: 'modern-java-concurrency'
+  order: 0
+draft: false
+---
+
+import GlossaryIndex from '../../components/glossary/GlossaryIndex.astro';
+import GlossaryGroup from '../../components/glossary/GlossaryGroup.astro';
+
+{/* TODO: 이 용어 사전에 대한 소개를 직접 적어 주세요. description도 채워 주세요. */}
+
+<GlossaryIndex />
+
+{/* 묶음마다 "## 제목" + <GlossaryGroup group="key" /> 를 하나씩 둡니다. key는 src/consts.ts의 GLOSSARY_GROUPS */}
+
+## 기본 개념
+
+<GlossaryGroup group="basics" />
+
+## JVM 이해하기
+
+<GlossaryGroup group="jvm" />
+
+## 스레드에 일 맡기기
+
+<GlossaryGroup group="task" />
+
+## 동기화
+
+<GlossaryGroup group="sync" />

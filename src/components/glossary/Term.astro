@@ -1,0 +1,85 @@
+---
+/**
+ * 본문 속 용어 링크. 마우스를 올리면 한 줄 요약이 뜨고, 누르면 용어 사전의 해당 카드로 이동합니다.
+ *
+ *   <Term id="virtual-thread">가상 스레드</Term>
+ *   <Term id="virtual-thread" />          ← 글자를 안 주면 용어 사전의 한국어 표기를 씁니다.
+ */
+import { getTerm, termHref } from '../../lib/glossary';
+
+interface Props {
+	/** src/content/glossary/<id>.md 의 파일 이름 */
+	id: string;
+}
+const { id } = Astro.props;
+const term = await getTerm(id);
+const hasText = Astro.slots.has('default');
+const tipId = `tip-${id}-${Math.random().toString(36).slice(2, 7)}`;
+---
+
+<a class="term" href={termHref(id)} aria-describedby={tipId}
+	>{hasText ? <slot /> : term.data.term}<span class="term-tip" id={tipId} role="tooltip"
+		><b>{term.data.term}</b> <i>{term.data.en}</i><br />{term.data.summary}</span
+	></a
+>
+
+<style>
+	.term {
+		position: relative;
+		color: inherit;
+		text-decoration: underline dotted var(--accent);
+		text-decoration-thickness: 1.5px;
+		text-underline-offset: 4px;
+		background: linear-gradient(transparent 62%, var(--accent-soft) 62%);
+		border-radius: 2px;
+	}
+	.term:hover {
+		color: var(--accent);
+	}
+	.term-tip {
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 10px);
+		z-index: 20;
+		width: max-content;
+		max-width: min(300px, 80vw);
+		padding: 10px 14px;
+		font-size: 0.85rem;
+		line-height: 1.6;
+		font-weight: 400;
+		color: var(--ink-soft);
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+		text-align: left;
+		white-space: normal;
+		pointer-events: none;
+		opacity: 0;
+		visibility: hidden;
+		transform: translate(-50%, 4px);
+		transition:
+			opacity 0.15s,
+			transform 0.15s,
+			visibility 0.15s;
+	}
+	.term-tip b {
+		color: var(--ink);
+		font-weight: 700;
+	}
+	.term-tip i {
+		font-style: normal;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.78rem;
+		color: var(--muted);
+	}
+	/* 터치 기기에서는 툴팁 없이 바로 용어 사전으로 이동 */
+	@media (hover: hover) {
+		.term:hover .term-tip,
+		.term:focus-visible .term-tip {
+			opacity: 1;
+			visibility: visible;
+			transform: translate(-50%, 0);
+		}
+	}
+</style>

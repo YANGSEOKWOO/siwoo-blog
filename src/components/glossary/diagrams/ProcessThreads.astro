@@ -1,0 +1,146 @@
+---
+/** 프로세스 두 개(JVM 두 개). 각 프로세스 안의 스레드는 힙을 공유하고, 프로세스끼리는 공유하지 않습니다. */
+const procs = [
+	{ cmd: 'java OrderServer', name: 'JVM ①' },
+	{ cmd: 'java UserServer', name: 'JVM ②' },
+];
+---
+
+<figure class="procs">
+	{
+		procs.map((p, i) => (
+			<>
+				{i > 0 && (
+					<div class="wall" aria-hidden="true">
+						<span>메모리 공유 안 됨</span>
+					</div>
+				)}
+				<div class="proc">
+					<p class="ptitle">
+						<b>프로세스 = {p.name}</b>
+						<code>$ {p.cmd}</code>
+					</p>
+					<div class="heap">
+						자바 힙 <small>객체 · 이 프로세스의 스레드끼리 공유</small>
+					</div>
+					<div class="arrows" aria-hidden="true">
+						<span>↕</span>
+						<span>↕</span>
+						<span>↕</span>
+					</div>
+					<div class="threads">
+						{[1, 2, 3].map((n) => (
+							<div class="t">
+								스레드 {n}
+								<small>스택 · 각자</small>
+							</div>
+						))}
+					</div>
+				</div>
+			</>
+		))
+	}
+</figure>
+
+<style>
+	.procs {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+		gap: 10px;
+		margin: 0;
+	}
+	.proc {
+		padding: 12px;
+		background: var(--bg);
+		border: 1.5px solid var(--ink-soft);
+		border-radius: 12px;
+	}
+	.ptitle {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 4px 8px;
+		margin: 0 0 10px;
+		font-size: 0.82rem;
+		color: var(--ink);
+	}
+	.ptitle code {
+		font-size: 0.7rem;
+		color: var(--muted);
+	}
+	.heap {
+		padding: 8px 10px;
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border: 1.5px solid var(--accent);
+		border-radius: 8px;
+		text-align: center;
+	}
+	.heap small,
+	.t small {
+		display: block;
+		font-size: 0.68rem;
+		font-weight: 500;
+		color: var(--muted);
+	}
+	.arrows {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		text-align: center;
+		font-size: 0.8rem;
+		line-height: 1.6;
+		color: var(--accent);
+	}
+	.threads {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 6px;
+	}
+	.t {
+		padding: 6px 4px;
+		font-size: 0.76rem;
+		font-weight: 650;
+		text-align: center;
+		color: var(--ink);
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-top: 3px solid var(--ok);
+		border-radius: 8px;
+	}
+	.wall {
+		display: grid;
+		place-items: center;
+		width: 22px;
+		border-left: 2px dashed var(--fail);
+		margin-left: 10px;
+	}
+	.wall span {
+		writing-mode: vertical-rl;
+		font-size: 0.7rem;
+		font-weight: 700;
+		color: var(--fail);
+		background: var(--surface);
+		padding: 6px 0;
+		margin-left: -12px;
+	}
+	@media (max-width: 720px) {
+		.procs {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.wall {
+			width: auto;
+			height: 22px;
+			margin: 0;
+			border-left: 0;
+			border-top: 2px dashed var(--fail);
+		}
+		.wall span {
+			writing-mode: horizontal-tb;
+			margin: -12px 0 0;
+			padding: 0 8px;
+		}
+	}
+</style>

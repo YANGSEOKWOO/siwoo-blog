@@ -1,0 +1,312 @@
+---
+/**
+ * 태스크가 이그제큐터의 대기열에 쌓이고, 놀고 있는 스레드가 하나씩 꺼내 실행하는 움직이는 그림.
+ * "+ 태스크 제출" 버튼으로 직접 제출해 볼 수 있습니다.
+ */
+interface Props {
+	threads?: number;
+}
+const { threads = 3 } = Astro.props;
+---
+
+<figure class="exq" data-threads={threads}>
+	<div class="head">
+		<span class="title">이그제큐터 <small>스레드 {threads}개짜리 스레드 풀</small></span>
+		<div class="btns">
+			<button type="button" class="submit">+ 태스크 제출</button>
+			<button type="button" class="play" aria-pressed="true">일시정지</button>
+		</div>
+	</div>
+
+	<div class="body">
+		<div class="col">
+			<p class="label">대기열 <span class="qcount">0개</span></p>
+			<ol class="queue" aria-label="대기 중인 태스크"></ol>
+		</div>
+		<div class="col">
+			<p class="label">스레드 (일꾼)</p>
+			<div class="workers">
+				{
+					Array.from({ length: threads }, (_, i) => (
+						<div class="worker" data-w={i}>
+							<span class="wname">스레드 {i + 1}</span>
+							<span class="slot">
+								<span class="idle">쉬는 중</span>
+							</span>
+						</div>
+					))
+				}
+			</div>
+		</div>
+	</div>
+
+	<div class="done-row">
+		<span class="label">완료</span>
+		<div class="done" aria-label="완료된 태스크"></div>
+	</div>
+	<p class="caption">
+		내 코드는 <code>submit()</code>으로 대기열에 넣기만 합니다. 어느 스레드가 언제 실행할지는 이그제큐터가 정하고, 스레드는 일이 끝나면 다음 태스크를 꺼내 돌려씁니다.
+	</p>
+</figure>
+
+<script>
+	type Task = { name: string; left: number; total: number };
+	const DURATIONS = [3, 2, 4, 2, 3, 1, 2, 3];
+	const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	for (const fig of document.querySelectorAll<HTMLElement>('figure.exq')) {
+		const n = Number(fig.dataset.threads);
+		const queueEl = fig.querySelector<HTMLOListElement>('.queue')!;
+		const doneEl = fig.querySelector<HTMLElement>('.done')!;
+		const qcount = fig.querySelector<HTMLElement>('.qcount')!;
+		const slots = [...fig.querySelectorAll<HTMLElement>('.worker .slot')];
+		const playBtn = fig.querySelector<HTMLButtonElement>('.play')!;
+
+		let seq = 0;
+		let queue: Task[] = [];
+		let running: (Task | null)[] = Array(n).fill(null);
+		let done: string[] = [];
+		let idleTicks = 0;
+
+		const make = (): Task => {
+			const total = DURATIONS[seq % DURATIONS.length];
+			seq++;
+			return { name: `T${seq}`, left: total, total };
+		};
+		const reset = () => {
+			seq = 0;
+			queue = Array.from({ length: 7 }, make);
+			running = Array(n).fill(null);
+			done = [];
+			idleTicks = 0;
+		};
+		const render = () => {
+			queueEl.innerHTML = queue.map((t) => `<li class="chip">${t.name}</li>`).join('') || '<li class="empty">비어 있음</li>';
+			qcount.textContent = `${queue.length}개`;
+			running.forEach((t, i) => {
+				slots[i].innerHTML = t
+					? `<span class="chip run">${t.name}<i style="width:${((t.total - t.left) / t.total) * 100}%"></i></span>`
+					: '<span class="idle">쉬는 중</span>';
+			});
+			doneEl.innerHTML = done.map((d) => `<span class="chip ok">${d}</span>`).join('');
+		};
+		const tick = () => {
+			running = running.map((t) => {
+				if (!t) return null;
+				t.left--;
+				if (t.left <= 0) {
+					done.push(t.name);
+					return null;
+				}
+				return t;
+			});
+			running = running.map((t) => t ?? queue.shift() ?? null);
+			if (!queue.length && running.every((t) => !t)) {
+				if (++idleTicks > 3) reset();
+			} else idleTicks = 0;
+			if (done.length > 14) done = done.slice(-14);
+			render();
+		};
+
+		reset();
+		running = running.map(() => queue.shift() ?? null);
+		render();
+
+		fig.querySelector('.submit')!.addEventListener('click', () => {
+			if (queue.length < 12) queue.push(make());
+			idleTicks = 0;
+			render();
+		});
+
+		let playing = !reduce;
+		const setPlay = (on: boolean) => {
+			playing = on;
+			playBtn.setAttribute('aria-pressed', String(on));
+			playBtn.textContent = on ? '일시정지' : '재생';
+		};
+		setPlay(playing);
+		playBtn.addEventListener('click', () => setPlay(!playing));
+
+		let visible = false;
+		new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(fig);
+		setInterval(() => {
+			if (playing && visible) tick();
+		}, 800);
+	}
+</script>
+
+<style>
+	.exq {
+		margin: 0;
+		padding: 14px 16px 12px;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+	}
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 12px;
+	}
+	.title {
+		font-weight: 700;
+		font-size: 0.92rem;
+		color: var(--ink);
+	}
+	.title small {
+		margin-left: 4px;
+		font-size: 0.72rem;
+		font-weight: 500;
+		color: var(--muted);
+	}
+	.btns {
+		display: flex;
+		gap: 6px;
+		margin-left: auto;
+	}
+	button {
+		padding: 3px 12px;
+		font: inherit;
+		font-size: 0.76rem;
+		font-weight: 650;
+		border-radius: 999px;
+		cursor: pointer;
+	}
+	.submit {
+		color: var(--surface);
+		background: var(--accent);
+		border: 1px solid var(--accent);
+	}
+	.play {
+		color: var(--ink-soft);
+		background: var(--surface);
+		border: 1px solid var(--line);
+	}
+	.body {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+		gap: 14px;
+	}
+	.label {
+		margin: 0 0 6px;
+		font-size: 0.72rem;
+		font-weight: 650;
+		color: var(--muted);
+	}
+	.queue {
+		display: flex;
+		flex-wrap: wrap;
+		align-content: flex-start;
+		gap: 5px;
+		min-height: 74px;
+		margin: 0;
+		padding: 8px;
+		list-style: none;
+		background: var(--surface);
+		border: 1px dashed var(--line);
+		border-radius: 8px;
+	}
+	.queue :global(li + li) {
+		margin-top: 0;
+	}
+	.queue :global(.empty) {
+		font-size: 0.72rem;
+		color: var(--muted);
+	}
+	.workers {
+		display: grid;
+		gap: 6px;
+	}
+	.worker {
+		display: grid;
+		grid-template-columns: 4.4em minmax(0, 1fr);
+		align-items: center;
+		gap: 8px;
+	}
+	.wname {
+		font-size: 0.74rem;
+		font-weight: 650;
+		color: var(--ok);
+	}
+	.slot {
+		display: flex;
+		align-items: center;
+		min-height: 30px;
+		padding: 3px 6px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-left: 3px solid var(--ok);
+		border-radius: 8px;
+	}
+	.slot :global(.idle) {
+		font-size: 0.72rem;
+		color: var(--muted);
+	}
+	.exq :global(.chip) {
+		position: relative;
+		display: inline-block;
+		padding: 2px 10px;
+		overflow: hidden;
+		font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 999px;
+	}
+	.exq :global(.chip.run) {
+		color: var(--surface);
+		background: var(--accent);
+		min-width: 70%;
+	}
+	.exq :global(.chip.run i) {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		height: 3px;
+		background: var(--surface);
+		opacity: 0.7;
+		transition: width 0.4s;
+	}
+	.exq :global(.chip.ok) {
+		color: var(--ok);
+		background: color-mix(in srgb, var(--ok) 12%, transparent);
+	}
+	.done-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-top: 12px;
+		min-height: 24px;
+	}
+	.done-row .label {
+		margin: 0;
+	}
+	.done {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+	.caption {
+		margin: 10px 0 0;
+		font-size: 0.76rem;
+		line-height: 1.6;
+		color: var(--muted);
+	}
+	.caption code {
+		font-size: 0.7rem;
+	}
+	@media (max-width: 720px) {
+		.exq {
+			padding: 12px;
+		}
+		.body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.btns {
+			margin-left: 0;
+		}
+	}
+</style>

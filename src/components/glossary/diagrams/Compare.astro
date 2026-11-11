@@ -1,0 +1,84 @@
+---
+/**
+ * 두 가지를 나란히 비교. 안에 블록 두 개(코드 블록 등)를 넣습니다. 모바일에서는 위아래로 쌓입니다.
+ *
+ *   <Compare left="라이브러리 방식" right="문법 방식" leftTone="warn" rightTone="ok">
+ *
+ *   ```java
+ *   ...
+ *   ```
+ *
+ *   ```java
+ *   ...
+ *   ```
+ *
+ *   </Compare>
+ */
+type Tone = 'plain' | 'warn' | 'ok';
+interface Props {
+	left: string;
+	right: string;
+	leftTone?: Tone;
+	rightTone?: Tone;
+}
+const { left, right, leftTone = 'plain', rightTone = 'plain' } = Astro.props;
+---
+
+<div class="cmp">
+	<p class:list={['t', 'l', leftTone]}>{left}</p>
+	<p class:list={['t', 'r', rightTone]}>{right}</p>
+	<slot />
+</div>
+
+<style>
+	.cmp {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		column-gap: 12px;
+		row-gap: 6px;
+	}
+	.cmp > :global(*) {
+		margin: 0 !important;
+		min-width: 0;
+	}
+	.t {
+		align-self: end;
+		padding-left: 2px;
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.t::before {
+		content: '';
+		display: inline-block;
+		width: 8px;
+		height: 8px;
+		margin-right: 7px;
+		border-radius: 50%;
+		background: var(--muted);
+	}
+	.t.warn::before {
+		background: var(--fail);
+	}
+	.t.ok::before {
+		background: var(--ok);
+	}
+	@media (max-width: 720px) {
+		.cmp {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.t.l {
+			order: 1;
+		}
+		.cmp > :global(:nth-child(3)) {
+			order: 2;
+		}
+		.t.r {
+			order: 3;
+			margin-top: 8px !important;
+		}
+		.cmp > :global(:nth-child(4)) {
+			order: 4;
+		}
+	}
+</style>

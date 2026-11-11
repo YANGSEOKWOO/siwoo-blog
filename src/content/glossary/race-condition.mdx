@@ -1,0 +1,26 @@
+---
+term: 경쟁 조건
+en: Race Condition
+group: sync
+order: 1
+summary: 여러 스레드가 같은 데이터를 동시에 읽고 쓰면서, 실행 순서에 따라 결과가 달라지는 버그입니다.
+related: [synchronized, volatile, process-and-thread]
+---
+
+import RaceSteps from '../../components/glossary/diagrams/RaceSteps.astro';
+
+```java
+int count = 0;
+
+void increment() {
+    count++;
+}
+```
+
+`count++`는 한 줄이지만 CPU 입장에서는 **읽기 → 1 더하기 → 쓰기** 세 단계입니다. 스레드 둘이 이 사이에 끼어들면 한쪽의 결과가 사라집니다. 위쪽 버튼으로 `synchronized`를 적용했을 때와 비교해 보세요.
+
+<RaceSteps />
+
+`count`는 객체의 필드라서 모든 스레드가 공유하는 **자바 힙**에 있습니다. 그래서 이런 일이 생깁니다. 메서드 안의 지역 변수는 스레드마다 따로 있는 스택에 있어서 이 문제가 없습니다.
+
+그래서 **"이 구간은 한 번에 한 스레드만 들어와라"** 라고 막는 장치가 필요합니다. 이것을 **동기화**라고 하고, 그 장치를 **락(lock, 자물쇠)** 이라고 합니다. 자바에서는 [synchronized](#term-synchronized)가 대표적입니다.

@@ -1,0 +1,64 @@
+---
+term: Runnable
+en: Runnable
+group: task
+order: 1
+summary: run() 메서드 하나만 가진 자바 인터페이스입니다. "스레드에게 건넬 수 있는 할 일"의 규격이고, 람다로 가장 짧게 만들 수 있습니다.
+related: [task, executor-service, start-vs-run, platform-thread]
+---
+
+import RunnableFlow from '../../components/glossary/diagrams/RunnableFlow.astro';
+
+이름 그대로 Run(실행하다) + able(~할 수 있는), **실행할 수 있는 것**입니다. `java.lang` 패키지에 들어 있는 실제 정의는 이게 전부입니다.
+
+```java
+public interface Runnable {
+    void run();
+}
+```
+
+**인터페이스는 "약속"입니다**
+
+`Runnable`을 구현한다는 건 **"나는 `run()`을 가지고 있으니, 누구든 나를 받으면 `run()`을 불러서 실행시킬 수 있다"** 는 약속입니다.
+
+`Thread`를 만든 사람은 내가 어떤 일을 시킬지 미리 알 수 없습니다. 그래서 `Thread`는 **"Runnable이면 뭐든 받겠다"** 고 정해 두고(`new Thread(Runnable task)`), 스레드가 시작되면 받은 것의 `run()`만 불러 줍니다.
+
+> 비유: **콘센트 규격**입니다. `Thread`는 콘센트이고 `Runnable`은 플러그 모양입니다. 콘센트는 꽂힌 게 선풍기인지 충전기인지 모릅니다. 플러그 모양만 맞으면 전기를 넣어 줍니다.
+
+<RunnableFlow />
+
+**익명 내부 클래스와 람다**
+
+- **익명 내부 클래스** (②): 이름 없는 클래스를 **그 자리에서 정의하고 바로 객체 하나를 만드는** 문법입니다. `new Runnable() { ... }`는 "Runnable을 구현한 클래스를 여기서 만들고, 그 객체를 하나 생성하라"는 뜻입니다. 한 번만 쓸 클래스에 이름을 붙이지 않아도 되지만, 여전히 껍데기가 깁니다.
+- **람다** (③, Java 8): 껍데기를 다 걷어내고 **알맹이만 남긴 것**입니다. `Runnable`에는 구현할 메서드가 `run()` **하나뿐**이라, 컴파일러가 "이 코드 조각은 당연히 `run()`의 몸통"이라고 알 수 있습니다. 이렇게 추상 메서드가 하나뿐인 인터페이스를 **함수형 인터페이스**라고 합니다.
+
+```text
+() -> sendMail()
+│  │  └─ 메서드 몸통 (run()의 내용)
+│  └──── "이걸 실행해라"
+└─────── 매개변수 (run()은 매개변수가 없으니 빈 괄호)
+```
+
+**Thread를 상속하는 대신 Runnable을 쓰는 이유**
+
+Java 1.0에서는 `class X extends Thread`로 상속하고 `run()`을 오버라이드하는 방식도 썼습니다(`Thread` 자체가 `Runnable`을 구현하기 때문에 가능합니다). 이 방식에는 두 가지 문제가 있습니다.
+
+- **딱 한 번뿐인 상속을 써 버립니다.** 자바는 부모 클래스를 하나만 가질 수 있는데, 그 자리를 "스레드로 실행된다"는 이유 하나로 차지합니다. 인터페이스는 여러 개 구현할 수 있어서 이 문제가 없습니다.
+- **할 일과 일꾼이 한 몸이 됩니다.** Runnable로 분리하면 할 일(작업 지시서)은 그대로 두고, 실행하는 쪽(`Thread`, 이그제큐터, 가상 스레드)만 갈아 끼울 수 있습니다. 이렇게 건네는 할 일을 [태스크](#term-task)라고 부릅니다.
+
+Thread의 메서드가 필요하면 `Thread.currentThread().getName()`처럼 "지금 나를 실행 중인 스레드"를 꺼내 쓰면 됩니다.
+
+**결과가 필요하면 Callable**
+
+```java
+public interface Callable<V> {
+    V call() throws Exception;
+}
+```
+
+| | `Runnable` | `Callable<V>` |
+|---|---|---|
+| 메서드 | `void run()` | `V call()` |
+| 결과값 | 없음 | 있음 |
+| 체크 예외 던지기 | 안 됨 | 됨 |
+| 주로 쓰는 곳 | `new Thread(...)`, `executor.submit(...)` | `executor.submit(...)` → `Future`로 결과 받기 |

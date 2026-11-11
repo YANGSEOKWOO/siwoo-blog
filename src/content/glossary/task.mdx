@@ -1,0 +1,49 @@
+---
+term: 태스크
+en: Task
+group: task
+order: 2
+summary: 스레드에게 시킬 일 한 덩어리입니다. 코드에서는 Runnable이나 Callable 객체이고, 이그제큐터에 제출하면 이그제큐터가 스레드를 골라 실행합니다.
+related: [runnable, executor-service, start-vs-run, platform-thread]
+---
+
+import ExecutorQueue from '../../components/glossary/diagrams/ExecutorQueue.astro';
+
+`Task`라는 특별한 클래스가 있는 게 아닙니다. 코드에서 태스크는 보통 [Runnable](#term-runnable)(결과 없음)이나 `Callable`(결과 있음) 객체이고, 대부분 람다로 씁니다.
+
+```java
+ExecutorService executor = Executors.newFixedThreadPool(3);   // 스레드 3개를 둔 이그제큐터
+
+Runnable task1 = () -> System.out.println("메일 보내기");      // 태스크 (결과 없음)
+Callable<Integer> task2 = () -> 1 + 1;                         // 태스크 (결과 있음)
+
+executor.submit(task1);                                        // 제출
+Future<Integer> f = executor.submit(task2);                    // 제출 → 나중에 결과를 받을 상자
+System.out.println(f.get());                                   // 2
+```
+
+**"태스크를 이그제큐터에 제출한다"**
+
+제출(`submit`)은 **"이 일 좀 해 주세요" 하고 [이그제큐터](#term-executor-service)에게 맡기는 것**입니다. 그다음은 이그제큐터가 알아서 합니다. 태스크는 대기열에 들어가고, 놀고 있는 스레드가 하나씩 꺼내 `run()`을 실행합니다. 아래 버튼으로 직접 제출해 보세요.
+
+<ExecutorQueue />
+
+> 비유: 식당입니다. **태스크** = 주문서, **이그제큐터** = 주방, **스레드** = 요리사입니다.
+> 손님(내 코드)은 주문서를 주방에 넣기만 하고, 어느 요리사가 언제 만들지는 주방이 정합니다.
+
+**왜 이렇게 나눌까요?**
+
+`new Thread(task).start()`는 **일 하나마다 일꾼을 새로 고용**하는 방식입니다. [플랫폼 스레드](#term-platform-thread)는 비싸서(OS 스레드와 스택 생성), 일이 1만 개면 일꾼도 1만 명을 고용하게 됩니다. 이그제큐터를 쓰면 이렇게 됩니다.
+
+- **태스크(일)** 는 가볍고 얼마든지 많아도 됩니다.
+- **스레드(일꾼)** 는 정해진 수만 두고 **돌려씁니다** (스레드 풀).
+- 내 코드는 **무엇을 할지**만 신경 쓰고, **누가 언제 할지**는 이그제큐터에게 맡깁니다.
+
+**이 책과의 연결**
+
+```java
+Executors.newFixedThreadPool(200)           // 플랫폼 스레드 200개가 태스크를 돌려가며 처리
+Executors.newVirtualThreadPerTaskExecutor() // 태스크마다 가상 스레드를 새로 하나씩
+```
+
+두 번째 이름이 **"태스크마다(per task) 가상 스레드 하나"** 라는 뜻입니다. 가상 스레드는 싸니까 돌려쓸 필요 없이 일마다 새 일꾼을 붙입니다. 태스크를 제출하는 코드는 그대로이고, 이그제큐터만 바꾸면 됩니다.
