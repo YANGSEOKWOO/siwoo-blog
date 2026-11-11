@@ -2,9 +2,9 @@
 title: 'GA4, GTM을 통해 측정가능한 지표 구축하기'
 description: '사용자 반응을 숫자로 보기 위해 블로그에 GA4와 GTM을 연결하며 정리한 개념과, 페이지가 열릴 때 기록이 GA4로 전달되는 동작 원리를 담았습니다.'
 category: 'tech'
-pubDate: '2026-11-10'
+pubDate: '2026-11-12'
 tags: ['ga4', 'gtm', 'analytics']
-draft: true
+draft: false
 ---
 
 import AnalyticsMap from '../../components/diagrams/AnalyticsMap.astro';
@@ -24,7 +24,11 @@ import ServerFlow from '../../components/diagrams/ServerFlow.astro';
 - **GTM (Google Tag Manager)**: 사이트에 어떤 측정 코드를 실행할지 관리합니다.
 - **Search Console**: 구글 검색에서 내 사이트가 얼마나 노출되고 클릭되는지 보여줍니다.
 
-{/* TODO: Siwoo — 이 블로그에서 특히 보고 싶은 지표가 있다면 한두 줄 (예: 끝까지 읽은 비율, 코드 복사 수) */}
+이 블로그에서는 특히 세 가지를 보고 싶었습니다.
+
+- **글별 조회수**: 어떤 글을 많이 보는지
+- **끝까지 읽은 비율**: 들어온 사람 중 본문 끝까지 내려간 사람이 얼마나 되는지
+- **유입 검색어**: 어떤 검색어로 블로그를 찾아오는지
 
 ## 세 도구는 어떻게 연결될까요?
 
@@ -42,7 +46,7 @@ import ServerFlow from '../../components/diagrams/ServerFlow.astro';
 
 참고로 Search Console의 클릭 수와 GA4의 검색 유입 세션 수는 보통 같지 않습니다. Search Console은 검색 결과에서 클릭한 순간을 세고, GA4는 방문자 브라우저에서 태그가 실행되어야 세기 때문입니다. 광고 차단기를 쓰거나 페이지가 뜨기 전에 나간 방문은 GA4에서 빠집니다.
 
-{/* TODO: Siwoo — Search Console 등록·GA4 연결을 실제로 하고 나면 결과 한 줄 추가 */}
+이 블로그도 Search Console에 등록하고 GA4와 연결해 두었습니다. 위에서 보고 싶다고 한 유입 검색어는 이 연결로 확인합니다.
 
 ## GA4와 GTM은 각각 무엇을 관리할까요?
 
@@ -95,7 +99,18 @@ GTM의 장점은 사이트 코드를 다시 배포하지 않고 측정 방식을
 
 브라우저 개발자 도구(F12) → Network 탭에서 `collect`로 필터링하면 실제 요청을 볼 수 있습니다. 요청 주소에 붙은 값 중 `tid`는 측정 ID, `en`은 이벤트 이름, `dl`은 페이지 주소입니다.
 
-{/* TODO: 개발자 도구 Network 탭에서 collect 요청을 캡처해 이미지로 넣기 (src/assets/posts/ga4-gtm-how-it-works/) */}
+이 글을 열었을 때 나가는 요청에서 주요 값만 추리면 이런 모양입니다.
+
+```text
+https://www.google-analytics.com/g/collect
+  ?v=2
+  &tid=G-YQJFYJYNDT                 # 측정 ID
+  &en=page_view                     # 이벤트 이름
+  &dl=https://.../blog/ga4-gtm-how-it-works/   # 페이지 주소
+  &dt=GA4, GTM을 통해 측정가능한 지표 구축하기    # 페이지 제목
+```
+
+본문 끝까지 내려가면 같은 주소로 `en=read_complete` 요청이 한 번 더 나갑니다. 이때 직접 붙인 값은 `ep.post_slug`(문자), `epn.seconds_to_complete`(숫자)처럼 앞에 `ep.`/`epn.`이 붙어서 전달됩니다.
 
 ## 정리
 
@@ -105,4 +120,3 @@ GTM의 장점은 사이트 코드를 다시 배포하지 않고 측정 방식을
 - 기록을 GA4로 보내는 주체는 방문자의 브라우저이고, 그 일을 하는 것이 GTM 컨테이너 안의 Google 태그입니다.
 
 {/* TODO: GA4 실시간 보고서에서 내 방문(page_view)이 잡힌 화면 캡처와 확인 결과 한 줄 추가 */}
-{/* TODO: (선택) 다음에 해볼 것 — Siwoo가 실제로 할 계획 */}
