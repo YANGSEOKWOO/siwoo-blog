@@ -14,7 +14,7 @@ argument-hint: "[slug]"
 
 `src/content/blog/<slug>.md(x)`를 읽고 아래를 확인한다. 문제가 있으면 목록으로 보여주고, 고칠지 사용자에게 묻는다. 내용(사실·경험)은 사용자 확인 없이 바꾸지 않는다.
 
-- [ ] `<!-- TODO` 주석이 남아 있지 않다
+- [ ] TODO 주석(`<!-- TODO`, `{/* TODO`)이 남아 있지 않다
 - [ ] `description`이 비어 있지 않고 80~120자 안팎이다
 - [ ] `tags`가 1개 이상이다
 - [ ] 책 글이면 `book.title`, `book.author`가 채워져 있다
