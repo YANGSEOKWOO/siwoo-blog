@@ -1,0 +1,170 @@
+---
+/**
+ * Spring Boot 서버의 세 시기(준비 · 영업 · 마감)와 세 층의 라이프사이클
+ * (애플리케이션 · Bean · 요청)을 한 표에 겹쳐 보여주는 그림.
+ * 좁은 화면에서는 그림 영역만 가로로 스크롤됩니다.
+ */
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+---
+
+<figure class="llayers">
+	<div class="scroll">
+		<div class="board">
+			<span class="corner"></span>
+			<p class="phase">준비<small>서버 켤 때 1번</small></p>
+			<p class="phase run">영업<small>요청 올 때마다 반복</small></p>
+			<p class="phase">마감<small>서버 끌 때 1번</small></p>
+
+			<p class="layer app">애플리케이션</p>
+			<div class="cell app">
+				<ol class="steps">
+					<li>시작</li><li>환경 준비</li><li>컨테이너 생성</li><li>refresh</li><li>Runner</li><li>ready</li>
+				</ol>
+			</div>
+			<div class="cell app run"><span class="pill">대기 ↔ 요청 처리</span></div>
+			<div class="cell app"><span class="pill">graceful shutdown</span></div>
+
+			<p class="layer bean">Bean</p>
+			<div class="cell bean">
+				<ol class="steps">
+					<li>객체 생성</li><li>DI</li><li><code>@PostConstruct</code></li>
+				</ol>
+			</div>
+			<div class="cell bean run"><span class="bar">하나의 Bean을 모든 요청이 함께 사용</span></div>
+			<div class="cell bean"><span class="pill"><code>@PreDestroy</code></span></div>
+
+			<p class="layer req">요청</p>
+			<div class="cell req empty">아직 받지 못함</div>
+			<div class="cell req run">
+				<span class="loop">요청 #1</span><span class="loop">요청 #2</span><span class="loop">요청 #3</span><span class="loop">…</span>
+			</div>
+			<div class="cell req"><span class="pill">하던 요청만 마무리</span></div>
+		</div>
+	</div>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.llayers {
+		--app: var(--accent);
+		--bean: var(--ok);
+		--req: #c27303;
+		margin: 2.2em 0;
+	}
+	.scroll {
+		overflow-x: auto;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+	}
+	.board {
+		min-width: 640px;
+		padding: 20px;
+		display: grid;
+		grid-template-columns: 92px minmax(0, 1.35fr) minmax(0, 1.5fr) minmax(0, 0.9fr);
+		gap: 8px;
+		align-items: stretch;
+	}
+	.phase {
+		margin: 0;
+		font-weight: 700;
+		font-size: 0.95rem;
+		display: grid;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--line);
+	}
+	.phase.run {
+		border-bottom-color: var(--req);
+	}
+	.phase small {
+		font-weight: 400;
+		font-size: 0.75rem;
+		color: var(--muted);
+	}
+	.layer {
+		margin: 0;
+		font-size: 0.8rem;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.layer::before {
+		content: '';
+		width: 10px;
+		height: 10px;
+		border-radius: 3px;
+		background: currentColor;
+	}
+	.layer.app { color: var(--app); }
+	.layer.bean { color: var(--bean); }
+	.layer.req { color: var(--req); }
+	.cell {
+		border-radius: 8px;
+		padding: 10px;
+		font-size: 0.82rem;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		align-items: center;
+		border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+		background: color-mix(in srgb, var(--c) 9%, transparent);
+	}
+	.cell.app { --c: var(--app); }
+	.cell.bean { --c: var(--bean); }
+	.cell.req { --c: var(--req); }
+	.cell.empty {
+		background: transparent;
+		border-style: dashed;
+		border-color: var(--line);
+		color: var(--muted);
+	}
+	.steps {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		align-items: center;
+	}
+	.steps li {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.steps li + li::before {
+		content: '→';
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+	.pill, .loop {
+		background: var(--surface);
+		border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+		border-radius: 999px;
+		padding: 2px 10px;
+		white-space: nowrap;
+	}
+	.loop {
+		border-radius: 6px;
+	}
+	.bar {
+		width: 100%;
+		text-align: center;
+		background: color-mix(in srgb, var(--c) 22%, transparent);
+		border-radius: 6px;
+		padding: 4px 8px;
+	}
+	code {
+		font-size: 0.78rem;
+	}
+	figcaption {
+		margin-top: 0.7em;
+		text-align: center;
+		font-size: 0.85rem;
+		color: var(--muted);
+	}
+</style>

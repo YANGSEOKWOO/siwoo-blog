@@ -1,0 +1,213 @@
+---
+/**
+ * 요청이 왔을 때 Controller · Service · Repository가 각각 맡는 일을 보여주는 그림.
+ * 위 화살표는 요청이 들어가는 방향(데이터 모양이 JSON → DTO → Entity → SQL로 바뀜),
+ * 아래 화살표는 응답이 나오는 방향. Service 아래 괄호는 트랜잭션 경계.
+ * 넓은 화면은 가로, 좁은 화면은 세로로 쌓입니다.
+ */
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+
+const layers = [
+	{
+		key: 'ctrl',
+		name: 'Controller',
+		nick: '입구 · 번역가',
+		anno: ['@RestController'],
+		does: 'HTTP 요청에서 값을 꺼내 검증하고, Service를 부른 뒤 결과를 HTTP 응답으로 바꿉니다.',
+		inOut: 'HTTP 요청 → 요청 DTO',
+		notKnow: '비즈니스 규칙, SQL',
+	},
+	{
+		key: 'svc',
+		name: 'Service',
+		nick: '두뇌',
+		anno: ['@Service', '@Transactional'],
+		does: '비즈니스 규칙을 확인하고, 여러 Repository 호출을 하나의 트랜잭션으로 묶습니다.',
+		inOut: 'DTO → 규칙 확인 → 결과 DTO',
+		notKnow: 'HTTP (요청 객체, 상태 코드)',
+	},
+	{
+		key: 'repo',
+		name: 'Repository',
+		nick: '창고 관리인',
+		anno: ['@Repository'],
+		does: '데이터를 저장하고 조회하는 일만 합니다. 어떻게 저장하는지는 숨깁니다.',
+		inOut: '조건(id 등) → Entity',
+		notKnow: '비즈니스 규칙, HTTP',
+	},
+];
+---
+
+<figure class="lroles">
+	<div class="board">
+		<div class="ends client"><b>Client</b><small>브라우저, 앱</small></div>
+
+		<div class="flow req" aria-hidden="true">
+			<span>JSON</span><i>→</i><span>DTO</span><i>→</i><span>DTO</span><i>→</i><span>SQL</span>
+			<em>요청이 들어가는 방향</em>
+		</div>
+
+		<ol class="layers">
+			{layers.map((l) => (
+				<li class={`layer ${l.key}`}>
+					<p class="head"><b>{l.name}</b><span class="nick">{l.nick}</span></p>
+					<p class="annos">{l.anno.map((a) => <code>{a}</code>)}</p>
+					<p class="does">{l.does}</p>
+					<dl>
+						<dt>받고 넘기는 것</dt><dd>{l.inOut}</dd>
+						<dt>몰라야 하는 것</dt><dd>{l.notKnow}</dd>
+					</dl>
+				</li>
+			))}
+		</ol>
+
+		<div class="ends db"><b>DB</b><small>MySQL 등</small></div>
+
+		<div class="flow res" aria-hidden="true">
+			<em>응답이 나오는 방향</em>
+			<span>JSON</span><i>←</i><span>DTO</span><i>←</i><span>Entity</span><i>←</i><span>행(row)</span>
+		</div>
+
+		<p class="tx"><span>트랜잭션 경계 = Service 메서드 하나</span></p>
+		<p class="thread">세 레이어 모두 <b>같은 워커 스레드</b> 안의 메서드 호출입니다. 의존 방향은 Controller → Service → Repository 한쪽으로만 흐릅니다.</p>
+	</div>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.lroles {
+		--req: #c27303;
+		margin: 2.2em 0;
+	}
+	.board {
+		padding: 20px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		display: grid;
+		grid-template-columns: 84px minmax(0, 1fr) 84px;
+		grid-template-areas:
+			'.      req    .'
+			'client layers db'
+			'.      res    .'
+			'.      tx     .'
+			'thread thread thread';
+		gap: 10px 12px;
+		align-items: stretch;
+	}
+	.ends {
+		display: grid;
+		align-content: center;
+		justify-items: center;
+		text-align: center;
+		gap: 2px;
+		border: 1.5px dashed var(--line);
+		border-radius: 10px;
+		padding: 10px 6px;
+		font-size: 0.85rem;
+	}
+	.ends small { font-size: 0.7rem; color: var(--muted); }
+	.client { grid-area: client; }
+	.db { grid-area: db; border-radius: 18px / 10px; }
+	.flow {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.75rem;
+	}
+	.flow span {
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 1px 9px;
+		background: var(--surface);
+	}
+	.flow i { font-style: normal; color: var(--muted); }
+	.flow em { font-style: normal; color: var(--muted); font-size: 0.72rem; }
+	.req { grid-area: req; color: var(--req); }
+	.req em { margin-left: auto; }
+	.res { grid-area: res; color: var(--ok); }
+	.res em { margin-right: auto; }
+	.layers {
+		grid-area: layers;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 10px;
+	}
+	.layer {
+		position: relative;
+		display: grid;
+		gap: 6px;
+		align-content: start;
+		padding: 12px;
+		border-radius: 10px;
+		background: var(--accent-soft);
+		border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+	}
+	.layer.svc {
+		border: 1.5px solid var(--accent);
+	}
+	.layer + .layer::before {
+		content: '→';
+		position: absolute;
+		left: -11px;
+		top: 14px;
+		width: 10px;
+		text-align: center;
+		color: var(--muted);
+		font-size: 0.8rem;
+	}
+	.head { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+	.head b { font-size: 1rem; }
+	.nick { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
+	.annos { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+	.annos code { font-size: 0.7rem; background: var(--surface); border-radius: 4px; padding: 0 5px; }
+	.does { margin: 0; font-size: 0.8rem; line-height: 1.5; }
+	dl { margin: 0; display: grid; gap: 1px; font-size: 0.75rem; }
+	dt { color: var(--muted); font-size: 0.68rem; margin-top: 4px; }
+	dd { margin: 0; }
+	.tx {
+		grid-area: tx;
+		margin: 0;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 10px;
+	}
+	.tx span {
+		grid-column: 2;
+		text-align: center;
+		font-size: 0.72rem;
+		color: var(--accent);
+		border: 1.5px solid var(--accent);
+		border-top: none;
+		border-radius: 0 0 8px 8px;
+		padding: 2px 6px 4px;
+	}
+	.thread {
+		grid-area: thread;
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--muted);
+		border-top: 1px dashed var(--line);
+		padding-top: 10px;
+	}
+	.thread b { color: var(--ink); }
+	figcaption { margin-top: 0.7em; text-align: center; font-size: 0.85rem; color: var(--muted); }
+	@media (max-width: 760px) {
+		.board {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas: 'client' 'req' 'layers' 'tx' 'db' 'res' 'thread';
+		}
+		.layers { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+		.layer + .layer::before { content: '↓'; left: 50%; top: -15px; width: auto; transform: translateX(-50%); }
+		.tx { grid-template-columns: minmax(0, 1fr); }
+		.tx span { grid-column: 1; border: 1.5px solid var(--accent); border-radius: 8px; }
+		.req em, .res em { margin: 0; width: 100%; }
+	}
+</style>

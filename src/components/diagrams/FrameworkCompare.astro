@@ -1,0 +1,124 @@
+---
+/**
+ * Spring Boot와 Flask가 같은 세 시기(준비 · 영업 · 마감)를 어떻게 지나는지
+ * 나란히 비교하는 그림. 행 = 시기, 열 = 프레임워크.
+ * 좁은 화면에서는 시기마다 두 프레임워크가 위아래로 쌓입니다.
+ */
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+
+const rows = [
+	{
+		phase: '실행',
+		sub: '무엇이 RAM에 올라가나',
+		spring: ['java -jar app.jar', 'JVM 프로세스 1개', '안에 톰캣 스레드 풀'],
+		flask: ['gunicorn app:app', '마스터 프로세스 1개', '워커 프로세스 여러 개'],
+	},
+	{
+		phase: '준비',
+		sub: '서버 켤 때 1번',
+		spring: ['컴포넌트 스캔', 'Bean 생성 + DI (스프링이 함)', '@GetMapping으로 URL 연결', '8080 listen'],
+		flask: ['파이썬 모듈 import', 'app = Flask(__name__)', '객체는 직접 만듦 (DI 없음)', '@app.route가 import될 때 URL 등록'],
+	},
+	{
+		phase: '영업',
+		sub: '요청마다 반복',
+		spring: ['Filter', 'Interceptor', 'Controller → Service → Repository', '워커 스레드 1개가 처리'],
+		flask: ['요청 컨텍스트 생성', 'before_request', 'view 함수 → service → repository', 'after_request · teardown_request'],
+	},
+	{
+		phase: '마감',
+		sub: '서버 끌 때 1번',
+		spring: ['graceful shutdown', '@PreDestroy', '커넥션 풀 닫기'],
+		flask: ['gunicorn이 워커에게 종료 신호', '처리 중인 요청 마무리', 'Flask 자체 종료 훅은 없음'],
+	},
+];
+---
+
+<figure class="fcompare">
+	<div class="board">
+		<span class="corner"></span>
+		<p class="col spring">Spring Boot</p>
+		<p class="col flask">Flask</p>
+		{rows.map((r) => (
+			<>
+				<p class="phase">{r.phase}<small>{r.sub}</small></p>
+				<ol class="cell spring" data-fw="Spring Boot">
+					{r.spring.map((s) => <li>{s}</li>)}
+				</ol>
+				<ol class="cell flask" data-fw="Flask">
+					{r.flask.map((s) => <li>{s}</li>)}
+				</ol>
+			</>
+		))}
+	</div>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.fcompare {
+		--spring: var(--ok);
+		--flask: var(--accent);
+		margin: 2.2em 0;
+	}
+	.board {
+		padding: 20px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		display: grid;
+		grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1fr);
+		gap: 8px 10px;
+	}
+	.col {
+		margin: 0;
+		font-weight: 700;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--c);
+		color: var(--c);
+	}
+	.col.spring, .cell.spring { --c: var(--spring); }
+	.col.flask, .cell.flask { --c: var(--flask); }
+	.phase {
+		margin: 0;
+		font-weight: 700;
+		font-size: 0.9rem;
+		display: grid;
+		align-content: center;
+	}
+	.phase small { font-weight: 400; font-size: 0.7rem; color: var(--muted); }
+	.cell {
+		list-style: none;
+		margin: 0;
+		padding: 10px;
+		border-radius: 8px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 5px;
+		align-content: start;
+		background: color-mix(in srgb, var(--c) 9%, transparent);
+		border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
+	}
+	.cell li {
+		font-size: 0.78rem;
+		background: var(--surface);
+		border-radius: 6px;
+		padding: 2px 8px;
+		border: 1px solid color-mix(in srgb, var(--c) 25%, transparent);
+	}
+	figcaption { margin-top: 0.7em; text-align: center; font-size: 0.85rem; color: var(--muted); }
+	@media (max-width: 640px) {
+		.board { grid-template-columns: minmax(0, 1fr); }
+		.corner, .col { display: none; }
+		.phase { margin-top: 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+		.cell::before {
+			content: attr(data-fw);
+			width: 100%;
+			font-size: 0.72rem;
+			font-weight: 700;
+			color: var(--c);
+		}
+	}
+</style>

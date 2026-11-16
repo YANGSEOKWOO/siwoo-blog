@@ -1,0 +1,172 @@
+---
+/**
+ * 한 프로세스 안에서 스레드들이 무엇을 공유하고 무엇을 따로 갖는지 보여주는 그림.
+ * 위: 공유 영역(코드 · static · 힙). 힙 안에 싱글톤 Bean 하나.
+ * 아래: 워커 스레드마다 따로 가진 스택(= 진행 상황). 각 스레드에서 같은 Bean을 가리킴.
+ * 각 영역에 주방 비유를 작게 붙입니다.
+ */
+interface Props {
+	caption?: string;
+}
+const { caption } = Astro.props;
+const threads = [
+	{ name: '워커-1', user: 7, step: 'Service 실행 중' },
+	{ name: '워커-2', user: 12, step: 'DB 응답 대기' },
+	{ name: '워커-3', user: 31, step: 'Controller 실행 중' },
+];
+---
+
+<figure class="tmem">
+	<div class="proc">
+		<p class="proc-name">java 프로세스 <small>RAM에 올라간 서버 하나</small></p>
+
+		<div class="shared">
+			<p class="zone-tag">함께 쓰는 영역 <small>프로세스의 자원</small></p>
+			<div class="areas">
+				<div class="area">
+					<b>코드</b><span>실행할 바이트코드</span><em>주방의 레시피 북</em>
+				</div>
+				<div class="area">
+					<b>static</b><span>전역 변수, static 필드</span><em>벽에 붙은 공지</em>
+				</div>
+				<div class="area heap">
+					<b>힙</b><span>new로 만든 객체</span><em>냉장고 재료</em>
+					<div class="bean">
+						<code>OrderService</code> Bean 1개
+						<span class="field"><code>private int count;</code> ← 동시에 바꾸면 위험</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="links" aria-hidden="true">
+			{threads.map(() => <span>↑</span>)}
+		</div>
+
+		<div class="own">
+			<p class="zone-tag">스레드마다 따로 <small>“어디까지 했는지” = 진행 상황</small></p>
+			<ol class="threads">
+				{threads.map((t) => (
+					<li class="thread">
+						<p class="t-name">{t.name}<span>{t.step}</span></p>
+						<div class="stack">
+							<span class="frame">order(userId = {t.user})</span>
+							<span class="frame">지역 변수 qty = 1</span>
+							<span class="frame dim">호출 기록 · 돌아갈 곳</span>
+						</div>
+						<em>요리사 각자의 메모지</em>
+					</li>
+				))}
+			</ol>
+		</div>
+	</div>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.tmem {
+		--shared: var(--accent);
+		--own: var(--ok);
+		--warn: #c27303;
+		margin: 2.2em 0;
+	}
+	.proc {
+		padding: 20px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		display: grid;
+		gap: 10px;
+	}
+	.proc-name { margin: 0; font-weight: 700; }
+	.proc-name small, .zone-tag small { font-weight: 400; color: var(--muted); font-size: 0.75rem; margin-left: 6px; }
+	.zone-tag { margin: 0 0 8px; font-size: 0.85rem; font-weight: 700; }
+	.shared {
+		padding: 14px;
+		border-radius: 12px;
+		border: 1.5px solid var(--shared);
+		background: color-mix(in srgb, var(--shared) 7%, transparent);
+	}
+	.shared .zone-tag { color: var(--shared); }
+	.areas {
+		display: grid;
+		grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
+		gap: 8px;
+	}
+	.area {
+		display: grid;
+		gap: 2px;
+		align-content: start;
+		padding: 10px;
+		border-radius: 8px;
+		background: var(--surface);
+		border: 1px solid color-mix(in srgb, var(--shared) 30%, transparent);
+		font-size: 0.8rem;
+	}
+	.area b { font-size: 0.92rem; }
+	.area span { color: var(--muted); }
+	.area em { font-style: normal; font-size: 0.7rem; color: var(--shared); }
+	.bean {
+		margin-top: 6px;
+		padding: 8px 10px;
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--shared) 14%, transparent);
+		display: grid;
+		gap: 4px;
+		font-size: 0.78rem;
+	}
+	.bean code { font-size: 0.76rem; }
+	.field { color: var(--warn); font-size: 0.72rem; }
+	.links {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		text-align: center;
+		color: var(--muted);
+		font-size: 0.9rem;
+		line-height: 1;
+	}
+	.own {
+		padding: 14px;
+		border-radius: 12px;
+		border: 1.5px dashed var(--own);
+	}
+	.own .zone-tag { color: var(--own); }
+	.threads {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+	}
+	.thread {
+		display: grid;
+		gap: 6px;
+		align-content: start;
+		padding: 10px;
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--own) 8%, var(--surface));
+		border: 1px solid color-mix(in srgb, var(--own) 35%, transparent);
+	}
+	.t-name { margin: 0; font-weight: 700; font-size: 0.85rem; display: grid; }
+	.t-name span { font-weight: 400; font-size: 0.7rem; color: var(--muted); }
+	.stack { display: grid; gap: 3px; }
+	.frame {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 0.7rem;
+		padding: 3px 7px;
+		border-radius: 4px;
+		background: var(--surface);
+		border: 1px solid color-mix(in srgb, var(--own) 30%, transparent);
+		overflow-wrap: anywhere;
+	}
+	.frame.dim { color: var(--muted); }
+	.thread em { font-style: normal; font-size: 0.7rem; color: var(--own); }
+	figcaption { margin-top: 0.7em; text-align: center; font-size: 0.85rem; color: var(--muted); }
+	@media (max-width: 680px) {
+		.proc { padding: 14px; }
+		.areas, .threads { grid-template-columns: minmax(0, 1fr); }
+		.links { grid-template-columns: 1fr; }
+		.links span + span { display: none; }
+	}
+</style>
